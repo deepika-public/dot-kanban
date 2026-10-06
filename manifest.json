@@ -1,0 +1,10 @@
+{
+  "id": "dot-kanban",
+  "name": "dot-kanban",
+  "version": "0.5.0",
+  "minAppVersion": "1.7.2",
+  "description": "Kanban board of the vault's tasks, one column per checkbox status, configured by dot-kanban code blocks. Works with the Tasks plugin's formats.",
+  "author": "Clément OLIVIER",
+  "authorUrl": "https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban",
+  "isDesktopOnly": false
+}
