@@ -40,9 +40,14 @@ function reasonText(reason: Reason): string {
   }
 }
 
-/** The tasks read but not shown, each with its reason; a click opens it. */
+/** The tasks read but not shown, each with its path as the board shows it and its reason; a click opens it. */
 export class HiddenModal extends Modal {
-  constructor(app: App, private readonly hidden: readonly Hidden[], private readonly openTask: (task: Task) => void) {
+  constructor(
+    app: App,
+    private readonly hidden: readonly Hidden[],
+    private readonly pathOf: (task: Task) => string,
+    private readonly openTask: (task: Task) => void,
+  ) {
     super(app);
   }
 
@@ -55,7 +60,7 @@ export class HiddenModal extends Modal {
       statusIcon(button, task.status);
       const text = button.createDiv({ cls: "dot-kanban-hidden-text" });
       text.createDiv({ text: task.info.description || task.text.trim() });
-      text.createDiv({ cls: "dot-kanban-muted", text: `${task.path} · ${reasonText(reason)}` });
+      text.createDiv({ cls: "dot-kanban-muted", text: `${this.pathOf(task)} · ${reasonText(reason)}` });
       button.onclick = () => {
         this.close();
         this.openTask(task);

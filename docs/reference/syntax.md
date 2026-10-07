@@ -24,6 +24,8 @@ sort by priority, due
 # facultatif : un groupe par personne
 group by owner
 show client
+# chemins affichés à partir de Projets/ : « Site web.md »
+path root Projets
 width 240px
 ```
 ````
@@ -38,6 +40,7 @@ width 240px
 | `group by x` | Une rangée par valeur de `x` : un champ (`owner`, `client`…), `priority`, `note` ou `heading`. Changeable dans la barre d'outils | aucun groupe |
 | `show a, b` · `hide a, b` | Éléments des cartes, voir [ce qu'affiche une carte](#ce-quaffiche-une-carte) | `priority, due, subtasks, owner, path` |
 | `width 200px` | Largeur minimale d'une colonne | `240px` |
+| `path root dossier` | Dossier à partir duquel le chemin des notes est affiché, voir [le chemin affiché](#le-chemin-affiché). Un ou plusieurs segments (`Clients/ACME`), `/` au début ou à la fin indifférent. Sans dossier : erreur. Si plusieurs lignes, la dernière l'emporte. Ce n'est pas un filtre | chemin dans le vault |
 | Un filtre | Ne garder que les tâches qui le vérifient. Plusieurs lignes : toutes doivent l'être | tout le vault |
 
 ## Filtres
@@ -86,14 +89,40 @@ autre chose (`path includes A/ OR owner is Alice`) oblige à lire toutes les not
 | `recurrence` | ligne | règle de 🔁 |
 | `owner` | champ `owner` (ou `o`) | pastilles à initiales, nom au survol ; dans un groupe `owner`, la personne du groupe n'est pas répétée |
 | `<champ>` | champ | `champ: valeur` |
-| `path` | note | chemin de la note dans le vault |
+| `path` | note | chemin de la note dans le vault, ou à partir de `path root` (chemin complet au survol) |
 
 Un champ hérité de la tâche parente ou de la note s'affiche en italique et dit sa source au
 survol.
 
+### Le chemin affiché
+
+Sans `path root`, une carte affiche le chemin de sa note dans le vault. Avec
+`path root samm-workspace`, si ce chemin contient le dossier `samm-workspace`, au début ou au
+milieu, la carte n'affiche que ce qui le suit :
+
+| Chemin dans le vault | Affiché |
+| --- | --- |
+| `Deepika/Work/samm-workspace/1. Chantiers/Planning/Planning.md` | `1. Chantiers/Planning/Planning.md` |
+| `samm-workspace/Notes.md` | `Notes.md` |
+| `Perso/Courses.md` (hors du dossier) | `Perso/Courses.md` |
+| `old-samm-workspace/a.md` (pas le même dossier) | `old-samm-workspace/a.md` |
+
+- Le dossier est comparé segment entier par segment entier, **casse comprise**, comme les
+  chemins d'Obsidian ; un accent écrit en forme composée ou décomposée (NFC, NFD) compte
+  pour le même. `path root Clients/ACME` exige les deux dossiers à la suite.
+- Si le dossier apparaît plusieurs fois dans le chemin, c'est la dernière occurrence qui
+  compte.
+- Le même chemin raccourci sert partout où le tableau **montre** un chemin : la carte, la
+  source d'un champ hérité de la note au survol, la recherche de la barre d'outils (qui
+  cherche donc dans ce qui est affiché), le titre des groupes `note` et la liste des
+  écartées.
+- Il ne change rien au reste : les filtres `path` et `filename` et le tri `sort by path`
+  portent toujours sur le chemin dans le vault, deux notes de même chemin raccourci restent
+  deux groupes `note`, et les notifications (note introuvable) donnent le chemin complet.
+
 ## La barre d'outils
 
-Recherche (titre et chemin, sans casse ni accents), puce **owner** (une personne), puce
+Recherche (titre et chemin affiché, sans casse ni accents), puce **owner** (une personne), puce
 **Group by** (aucun, `owner`, `priority`, `note`, `heading`), puis le **résumé** :
 nombre de cartes, filtres du bloc, et **écartées**, qui liste les tâches lues mais non
 montrées avec leur raison (coche sans colonne, coche inconnue, au-delà de `limit`, barre

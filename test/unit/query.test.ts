@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { dayOf } from "../../src/dates";
 import { setLanguage } from "../../src/i18n";
-import { inScope, parseFilter, parseQuery } from "../../src/query";
+import { inScope, parseFilter, parseQuery, shownPath } from "../../src/query";
 import { tasksOf } from "./fixtures";
 
 const today = dayOf(2026, 10, 1);
@@ -105,5 +105,55 @@ describe("notes to read", () => {
       const filter = parseFilter(line);
       for (const task of tasks) expect(filter.path!(task.path)).toBe(filter.test(task, today));
     }
+  });
+});
+
+describe("path root", () => {
+  const note = "🧿 Deepika/0. ☕ Work/samm-workspace/1. 🪚 Chantiers/Planning référent/Planning référent.md";
+
+  it("is read apart from the path filters, the last line winning", () => {
+    const q = parseQuery("path root samm-workspace\npath includes Chantiers");
+    expect(q.pathRoot).toBe("samm-workspace");
+    expect(q.filters.map((f) => f.text)).toEqual(["path includes Chantiers"]);
+    expect(q.errors).toEqual([]);
+    expect(parseQuery("PATH ROOT /clients/samm-workspace/\npath root  Other").pathRoot).toBe("Other");
+    expect(parseQuery("path includes x").pathRoot).toBeNull();
+  });
+
+  it("reports a root without folder, with its line, in both languages", () => {
+    const q = parseQuery("column [ ]\npath root\npath root /");
+    expect(q.errors.map((e) => e.line)).toEqual([2, 3]);
+    expect(q.errors[0].message).toBe("No folder after “path root”: name one, such as path root Projects");
+    expect(q.pathRoot).toBeNull();
+    setLanguage("fr");
+    expect(parseQuery("path root  ").errors[0].message).toBe("Aucun dossier après « path root » : en nommer un, comme path root Projets");
+  });
+
+  it("shows what follows the root folder, at the start or within the path", () => {
+    expect(shownPath(note, "samm-workspace")).toBe("1. 🪚 Chantiers/Planning référent/Planning référent.md");
+    expect(shownPath("samm-workspace/Notes/a.md", "samm-workspace")).toBe("Notes/a.md");
+    expect(shownPath(note, parseQuery("path root 0. ☕ Work/samm-workspace/").pathRoot)).toBe("1. 🪚 Chantiers/Planning référent/Planning référent.md");
+    expect(shownPath("a/samm/b/samm/c.md", "samm")).toBe("c.md");
+    expect(shownPath(note, null)).toBe(note);
+  });
+
+  it("keeps the vault path of a note out of the root, or only partly named", () => {
+    expect(shownPath("Perso/Courses.md", "samm-workspace")).toBe("Perso/Courses.md");
+    expect(shownPath("old-samm-workspace/a.md", "samm-workspace")).toBe("old-samm-workspace/a.md");
+    expect(shownPath("SAMM-workspace/a.md", "samm-workspace")).toBe("SAMM-workspace/a.md");
+    expect(shownPath("Work/a.md", "clients/Work")).toBe("Work/a.md");
+    expect(shownPath("a/samm-workspace", "samm-workspace")).toBe("a/samm-workspace");
+  });
+
+  it("matches accents written in NFC or NFD alike", () => {
+    const nfd = "Clients/Référent/Été.md".normalize("NFD");
+    expect(shownPath(nfd, parseQuery("path root Clients/Référent".normalize("NFC")).pathRoot)).toBe("Été.md".normalize("NFD"));
+    expect(shownPath("Clients/Référent/Été.md".normalize("NFC"), parseQuery("path root Référent".normalize("NFD")).pathRoot)).toBe("Été.md");
+  });
+
+  it("leaves the path filters on the path in the vault", () => {
+    const q = parseQuery("path root samm-workspace\npath includes samm-workspace/1.");
+    expect(inScope(q, note)).toBe(true);
+    expect(inScope(q, "Perso/1. a.md")).toBe(false);
   });
 });

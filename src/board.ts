@@ -1,7 +1,7 @@
 // Which cards a board shows, where, in what order, and which it leaves out and why. Pure.
 import { fieldValues, type Task } from "./collect";
 import type { Day } from "./dates";
-import { fold, type ColumnDef, type Query, type SortKey } from "./query";
+import { fold, shownPath, type ColumnDef, type Query, type SortKey } from "./query";
 import type { Status } from "./statuses";
 import { DATE_KINDS, NO_PRIORITY, OWNER, PRIORITIES, priorityByLevel, setField, setPriority, valueText, type DateKind } from "./task";
 
@@ -88,24 +88,25 @@ interface LaneKey {
   rank: number;
 }
 
-function laneKeys(task: Task, groupBy: string): LaneKey[] {
+/** `root`: the block's `path root`, for the label of a lane by note. */
+function laneKeys(task: Task, groupBy: string, root: string | null): LaneKey[] {
   if (groupBy === "priority") {
     const p = priorityByLevel(task.info.priority);
     return [{ id: p.name, value: p.name, label: p.name, rank: -p.level }];
   }
-  if (groupBy === "note") return [{ id: task.path, value: task.path, label: task.path, rank: 0 }];
+  if (groupBy === "note") return [{ id: task.path, value: task.path, label: shownPath(task.path, root), rank: 0 }];
   if (groupBy === "heading") {
     return task.heading ? [{ id: fold(task.heading), value: task.heading, label: task.heading, rank: 0 }] : [];
   }
   return fieldValues(task, groupBy).map((v) => ({ id: fold(valueText(v)), value: v, label: valueText(v), rank: 0 }));
 }
 
-function layoutLanes(columns: BoardModel["columns"], groupBy: string): Lane[] {
+function layoutLanes(columns: BoardModel["columns"], groupBy: string, root: string | null): Lane[] {
   const lanes = new Map<string, LaneKey & { cells: Task[][]; tasks: Set<string> }>();
   const none: LaneKey = { id: "\u0000none", value: null, label: "", rank: Number.MAX_SAFE_INTEGER };
   columns.forEach((column, c) => {
     for (const task of column.cards) {
-      const keys = laneKeys(task, groupBy);
+      const keys = laneKeys(task, groupBy, root);
       for (const key of keys.length ? keys : [none]) {
         let lane = lanes.get(key.id);
         if (!lane) {
@@ -124,12 +125,12 @@ function layoutLanes(columns: BoardModel["columns"], groupBy: string): Lane[] {
 
 /* ---------- the board ---------- */
 
-/** The toolbar's test, its texts folded once for every card. */
-function toolbarTest(toolbar: Toolbar): (task: Task) => boolean {
+/** The toolbar's test, its texts folded once for every card. The search reads the path as shown. */
+function toolbarTest(toolbar: Toolbar, root: string | null): (task: Task) => boolean {
   const search = fold(toolbar.search.trim());
   const person = fold(toolbar.person);
   return (task) => {
-    if (search && !fold(`${task.info.description} ${task.path}`).includes(search)) return false;
+    if (search && !fold(`${task.info.description} ${shownPath(task.path, root)}`).includes(search)) return false;
     if (person && !fieldValues(task, OWNER).some((v) => fold(valueText(v)) === person)) return false;
     return true;
   };
@@ -139,7 +140,7 @@ export function layoutBoard(tasks: readonly Task[], query: Query, toolbar: Toolb
   const scope = tasks.filter((task) => query.filters.every((f) => f.test(task, today)));
   const hidden: Hidden[] = [];
   const columns = query.columns.map((def) => ({ def, cards: [] as Task[] }));
-  const passesToolbar = toolbarTest(toolbar);
+  const passesToolbar = toolbarTest(toolbar, query.pathRoot);
 
   for (const task of scope) {
     if (!passesToolbar(task)) hidden.push({ task, reason: { kind: "toolbar" } });
@@ -163,7 +164,7 @@ export function layoutBoard(tasks: readonly Task[], query: Query, toolbar: Toolb
 
   return {
     columns,
-    lanes: toolbar.groupBy ? layoutLanes(columns, toolbar.groupBy) : null,
+    lanes: toolbar.groupBy ? layoutLanes(columns, toolbar.groupBy, query.pathRoot) : null,
     lanesEditable: toolbar.groupBy !== "note" && toolbar.groupBy !== "heading",
     shown: columns.reduce((n, c) => n + c.cards.length, 0),
     hidden,
