@@ -1,6 +1,6 @@
 {
   "name": "dot-kanban",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Obsidian plugin: kanban board of the vault's tasks, configured by dot-kanban code blocks.",
   "license": "MIT",
   "private": true,

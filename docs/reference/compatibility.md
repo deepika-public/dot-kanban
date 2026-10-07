@@ -18,6 +18,7 @@ sont listés à plat.
 
 | Version | Changements |
 | --- | --- |
+| 0.5.1 | **Correction d'un blocage d'Obsidian** : le cache d'Obsidian peut donner à une ligne deux éléments de liste, l'un se déclarant son propre parent ; la remontée vers la tâche parente tournait alors à l'infini, et le premier tableau dont le périmètre contenait une telle note figeait Obsidian. Un parent est désormais toujours une ligne au-dessus, et la tâche l'emporte sur une ligne à deux éléments |
 | 0.5.0 | **Tableaux plus rapides sur un grand coffre** : un seul index des tâches pour tous les tableaux, notes lues par lots ; une ligne `path` ou `filename` seule écarte les notes avant toute lecture ; tableau non redessiné si ses tâches n'ont pas changé ; recherche appliquée après une pause de frappe. Une cellule dessine 50 cartes, puis **Afficher 50 de plus**. Titre de section le plus proche retrouvé quel que soit l'ordre du cache |
 | 0.4.2 | Classes CSS renommées de `tik-*` en `dot-kanban-*` (et `.tik` en `.dot-kanban`, variables `--tik-*` en `--dot-kanban-*`) : un snippet CSS qui visait les anciennes classes est à mettre à jour. Aucun changement de fonctionnement |
 | 0.4.1 | Releases GitHub accompagnées d'attestations de provenance (`main.js`, `manifest.json`, `styles.css` construits depuis le dépôt) ; section « Divulgations » du README. Aucun changement de fonctionnement |

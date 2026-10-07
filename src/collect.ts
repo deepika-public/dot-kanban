@@ -71,10 +71,14 @@ function noteOf(data: NoteData): Note {
  */
 export function collectTasks(data: NoteData): Task[] {
   const note = noteOf(data);
-  const byLine = new Map(data.items.map((item) => [item.line, item]));
+  // A list marker nested on its line (`- - [ ] …`) gives two items on one line, the inner
+  // one naming that very line as its parent. The task stands for its line, and a parent
+  // is only ever a line above: anything else would loop for ever.
+  const byLine = new Map<number, NoteData["items"][number]>();
+  for (const item of data.items) if (!byLine.has(item.line) || item.task !== undefined) byLine.set(item.line, item);
   const childTasks = new Map<number, NoteData["items"]>();
   for (const item of data.items) {
-    if (item.task === undefined || item.parent < 0) continue;
+    if (item.task === undefined || item.parent < 0 || item.parent >= item.line) continue;
     const siblings = childTasks.get(item.parent);
     if (siblings) siblings.push(item);
     else childTasks.set(item.parent, [item]);
@@ -92,11 +96,13 @@ export function collectTasks(data: NoteData): Task[] {
     return lo ? headings[lo - 1].heading : null;
   };
   const parentTask = (line: number) => {
+    let below = line;
     let parent = byLine.get(line)?.parent ?? -1;
-    while (parent >= 0) {
+    while (parent >= 0 && parent < below) {
       const item = byLine.get(parent);
       if (!item) return null;
       if (item.task !== undefined) return item;
+      below = parent;
       parent = item.parent;
     }
     return null;
@@ -123,8 +129,10 @@ export function collectTasks(data: NoteData): Task[] {
   };
 
   const tasks: Task[] = [];
+  const seen = new Set<number>();
   for (const item of data.items) {
-    if (item.task === undefined || parentTask(item.line)) continue;
+    if (item.task === undefined || seen.has(item.line) || parentTask(item.line)) continue;
+    seen.add(item.line);
     const text = data.lines[item.line] ?? "";
     const info = parseLine(text);
     if (!info) continue;

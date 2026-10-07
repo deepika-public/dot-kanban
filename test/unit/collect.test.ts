@@ -74,6 +74,24 @@ describe("collecting the tasks of a note", () => {
     expect(collectTasks(data).map((t) => t.heading)).toEqual(["One", "Two"]);
   });
 
+  it("ends when the cache gives a line two items, the inner one its own parent", () => {
+    // A plain item that is its own parent, above a task: the walk up used to loop for ever.
+    const plain = noteData("p.md", "- Notes\n    - [ ] Call");
+    plain.items = [{ line: 0, parent: 0, task: undefined }, { line: 1, parent: 0, task: " " }];
+    expect(collectTasks(plain).map((t) => t.line)).toEqual([1]);
+    // Seen in a real vault: two items on line 0, the task naming line 0 as its parent.
+    const data = noteData("n.md", "- [ ] Ship [o:: Alice]\n    - [x] Pack");
+    data.items = [{ line: 0, parent: -1, task: undefined }, { line: 0, parent: 0, task: " " }, { line: 1, parent: 0, task: "x" }];
+    const [ship, ...rest] = collectTasks(data);
+    expect(rest).toEqual([]);
+    expect(ship.line).toBe(0);
+    expect(ship.subtasks).toEqual({ done: 1, total: 1 });
+    // An item that is its own parent, alone on its line, is a card too.
+    const lone = noteData("l.md", "- [ ] Alone");
+    lone.items = [{ line: 0, parent: 0, task: " " }];
+    expect(collectTasks(lone).map((t) => t.line)).toEqual([0]);
+  });
+
   it("hands a parent's fields down to its sub-tasks, which count in its progress", () => {
     const [top] = tasksOf("c.md", "- [ ] top [owner:: Dana]\n    - [x] a\n    - [ ] b", { owner: "Eve" });
     expect(top.fields.owner.values).toEqual(["Dana"]);
