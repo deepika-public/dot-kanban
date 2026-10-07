@@ -13,6 +13,7 @@ const en = {
   badSort: "Cannot sort by “{text}”",
   badGroup: "Cannot group by “{text}”",
   emptyList: "Nothing listed after “{text}”",
+  badPathRoot: "No folder after “path root”: name one, such as path root Projects",
   // toolbar
   search: "Search…",
   searchLabel: "Search the cards",
@@ -88,6 +89,7 @@ const fr: Strings = {
   badSort: "Impossible de trier par « {text} »",
   badGroup: "Impossible de grouper par « {text} »",
   emptyList: "Rien après « {text} »",
+  badPathRoot: "Aucun dossier après « path root » : en nommer un, comme path root Projets",
   search: "Rechercher…",
   searchLabel: "Rechercher dans les cartes",
   peopleAll: "owner : tous",

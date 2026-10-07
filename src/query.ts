@@ -45,6 +45,11 @@ export interface Query {
   /** Card elements shown, §5 of the spec. */
   show: Set<string>;
   width: string | null;
+  /**
+   * `path root`: the folder the cards' paths are shown from, its segments without the
+   * surrounding `/`, in NFC. Null to show the path in the vault. Display only.
+   */
+  pathRoot: string | null;
   errors: QueryError[];
 }
 
@@ -221,6 +226,26 @@ function singleFilter(text: string): Test {
   return textTest(verb, valueText(wanted.trim()), (task) => fieldValues(task, key).map(valueText));
 }
 
+/* ---------- paths shown ---------- */
+
+const segments = (path: string) => path.normalize("NFC").split("/").filter((s) => s.length > 0);
+
+/**
+ * A note's path as a board shows it: what follows the last occurrence of the `path root`
+ * folder, compared segment by segment, with case, NFC and NFD alike. A note out of that
+ * folder, or no root, keeps its path in the vault.
+ */
+export function shownPath(path: string, root: string | null): string {
+  if (!root) return path;
+  const wanted = segments(root);
+  const parts = path.split("/");
+  const normalized = parts.map((part) => part.normalize("NFC"));
+  for (let i = parts.length - wanted.length - 1; i >= 0; i--) {
+    if (wanted.every((segment, j) => normalized[i + j] === segment)) return parts.slice(i + wanted.length).join("/");
+  }
+  return path;
+}
+
 /** A part as a test on the note's path, when it is about `path` or `filename` only. */
 function pathPart(text: string): ((path: string) => boolean) | null {
   const negated = text.match(/^not\s+(.+)$/i);
@@ -279,6 +304,7 @@ export function parseQuery(source: string): Query {
     groupBy: null,
     show: new Set(DEFAULT_SHOW),
     width: null,
+    pathRoot: null,
     errors: [],
   };
   source.split("\n").forEach((raw, index) => {
@@ -307,6 +333,15 @@ export function parseQuery(source: string): Query {
             if (word.toLowerCase() === "show") query.show.add(item);
             else query.show.delete(item);
           }
+          return;
+        }
+        case "path": {
+          // `path root …` sets how paths are shown; any other `path …` is a filter.
+          const root = rest.match(/^root(?:\s+(.*))?$/i);
+          if (!root) return void query.filters.push(parseFilter(line));
+          const folder = segments(root[1] ?? "");
+          if (!folder.length) fail(t("badPathRoot"));
+          query.pathRoot = folder.join("/");
           return;
         }
         case "width":

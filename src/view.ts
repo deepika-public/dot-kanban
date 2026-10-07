@@ -23,7 +23,7 @@ import { CardDrag } from "./dnd";
 import { language, priorityName, t } from "./i18n";
 import { statusIcon } from "./icons";
 import { HiddenModal, LegendModal } from "./modals";
-import { BUILT_IN_SHOW, inScope, parseQuery, type ColumnDef, type Query } from "./query";
+import { BUILT_IN_SHOW, inScope, parseQuery, shownPath, type ColumnDef, type Query } from "./query";
 import { statusOf, type Status } from "./statuses";
 import { tasksApi } from "./tasks-api";
 import {
@@ -383,7 +383,8 @@ export class TikBoard extends MarkdownRenderChild {
     if (model.hidden.length) {
       shell.summary.appendText(" · ");
       const hidden = shell.summary.createEl("button", { cls: "dot-kanban-link", text: model.hidden.length === 1 ? t("hiddenOne") : t("hidden", { n: model.hidden.length }) });
-      hidden.onclick = () => new HiddenModal(this.app, model.hidden, (task) => void this.openTask(task, "side")).open();
+      hidden.onclick = () =>
+        new HiddenModal(this.app, model.hidden, (task) => this.shownPath(task), (task) => void this.openTask(task, "side")).open();
     }
 
     const left = shell.scroller.scrollLeft;
@@ -557,7 +558,11 @@ export class TikBoard extends MarkdownRenderChild {
     }
     if (meta.childElementCount) el.appendChild(meta);
 
-    if (show.has("path")) el.createDiv({ cls: "dot-kanban-card-source", text: task.path });
+    if (show.has("path")) {
+      const path = this.shownPath(task);
+      // Shown from the `path root`: the path in the vault on hover.
+      el.createDiv({ cls: "dot-kanban-card-source", text: path, attr: path === task.path ? {} : { "aria-label": task.path } });
+    }
 
     el.addEventListener("click", (e) => this.onCardClick(e, task));
     el.addEventListener("contextmenu", (e) => {
@@ -565,6 +570,11 @@ export class TikBoard extends MarkdownRenderChild {
       this.cardMenu(task, e);
     });
     el.addEventListener("focus", () => (this.focused = task.id));
+  }
+
+  /** The note's path as the block shows it (`path root`). */
+  private shownPath(task: Task): string {
+    return shownPath(task.path, this.query.pathRoot);
   }
 
   private person(parent: HTMLElement, name: string) {
@@ -579,7 +589,7 @@ export class TikBoard extends MarkdownRenderChild {
       if (key === OWNER) el.setAttr("aria-label", fieldValues(task, key).map(valueText).join(", "));
       return;
     }
-    const source = field.source === "parent" ? t("fromParent") : t("fromNote", { note: task.path });
+    const source = field.source === "parent" ? t("fromParent") : t("fromNote", { note: this.shownPath(task) });
     el.setAttr("aria-label", t("inherited", { key, source }));
     el.addClass("is-inherited");
   }

@@ -24,10 +24,11 @@ C'est ce que lance la CI.
   ligne → parente → note, section et chemin, `o` lu comme `owner` ;
 - **bloc** (`query.test.ts`) : colonnes, tris, groupes, affichage, erreurs numérotées avec
   suggestion, chaque famille de filtres, `not` et `OR`, notes écartées avant lecture par
-  les filtres de chemin ;
+  les filtres de chemin ; `path root` et le chemin affiché (début, milieu, plusieurs
+  segments, hors racine, NFC/NFD, dossier manquant) ;
 - **tableau** (`board.test.ts`) : tris et limites par colonne, tâches écartées et leur
   raison, barre d'outils sans casse ni accents, groupes, écriture d'un changement de
-  groupe.
+  groupe ; recherche et groupes `note` sur le chemin affiché par `path root`.
 
 `test/unit/fixtures.ts` fabrique ce que le cache d'Obsidian dirait d'une note à partir de
 son Markdown.

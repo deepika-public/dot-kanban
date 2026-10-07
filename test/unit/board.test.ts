@@ -65,6 +65,23 @@ describe("toolbar", () => {
   });
 });
 
+describe("path root", () => {
+  const rooted = [...tasksOf("Clients/ACME/Site.md", "- [ ] Logo"), ...tasksOf("Perso/Courses.md", "- [ ] Beans")];
+
+  it("searches the path as shown, and the block's filters the path in the vault", () => {
+    const q = parseQuery("column [ ]\npath root Clients/ACME");
+    expect(titles(layoutBoard(rooted, q, { ...none, search: "site" }, today).columns[0].cards)).toEqual(["Logo"]);
+    expect(layoutBoard(rooted, q, { ...none, search: "acme" }, today).shown).toBe(0);
+    expect(layoutBoard(rooted, q, { ...none, search: "perso/" }, today).shown).toBe(1);
+    expect(layoutBoard(rooted, parseQuery("path root Clients/ACME\npath includes clients/acme"), none, today).shown).toBe(1);
+  });
+
+  it("labels the lanes by note with the path as shown, each note its own lane", () => {
+    const board = layoutBoard(rooted, parseQuery("column [ ]\npath root ACME"), { ...none, groupBy: "note" }, today);
+    expect(board.lanes!.map((l) => [l.label, l.value])).toEqual([["Perso/Courses.md", "Perso/Courses.md"], ["Site.md", "Clients/ACME/Site.md"]]);
+  });
+});
+
 describe("lanes", () => {
   it("groups by a field, a card under each of its values, no value last", () => {
     const board = layoutBoard(tasks, parseQuery("column [ ]\ncolumn [/]"), { ...none, groupBy: "owner" }, today);

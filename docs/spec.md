@@ -114,6 +114,7 @@ show due, owner, path
 | `group by` | Groupes en rangées : `<clé>` (dont `owner`), `priority`, `note`, `heading` | aucun |
 | `show` / `hide` | Éléments de la carte (§5) | §5 |
 | `width 200px` | Largeur minimale des colonnes ; le tableau prend toute la largeur du panneau | `240px` |
+| `path root <dossier>` | Affichage seulement : les chemins sont montrés à partir de ce dossier (segments entiers, casse comprise, NFC = NFD, dernière occurrence) ; une note hors du dossier garde son chemin. Filtres et tri inchangés. Sans dossier : erreur | chemin dans le vault |
 
 Erreurs : une ligne non comprise est signalée sous le tableau avec son numéro et, si
 possible, la correction (« `colum` : vouliez-vous dire `column` ? »). Le reste s'affiche.
@@ -139,7 +140,7 @@ La commande **dot-kanban : insérer un tableau** colle un bloc commenté prêt �
 | ⑤ | `subtasks` | sous-éléments | cochées / total | affiché s'il y en a |
 | ⑥ | `owner` | champ `owner` (§3.2) | pastilles à initiales, nom au survol | affiché |
 | ⑦ | `<clé>` | champ (§3.2) | `clé: valeur` | masqué |
-| ⑧ | `path` | note | chemin de la note dans le vault | affiché |
+| ⑧ | `path` | note | chemin de la note dans le vault, ou à partir de `path root` (complet au survol) | affiché |
 | | `recurrence` | ligne | 🔁 et sa règle | masqué |
 
 Au survol, un élément hérité dit sa source : « to : hérité des propriétés de la note (Projets/Site web.md) ».

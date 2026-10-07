@@ -65,6 +65,7 @@ width 220px
 | `group by x` | une rangée par valeur : un champ (`owner`…), `priority`, `note`, `heading` | aucun |
 | `show` / `hide` | éléments des cartes | `priority, due, subtasks, owner, path` |
 | `width` | largeur minimale d'une colonne | `240px` |
+| `path root dossier` | chemins affichés à partir de ce dossier (`path root Projets` : `Site.md`) ; les filtres gardent le chemin complet | chemin dans le vault |
 
 **Filtres**, à la manière de Tasks, sans casse ni accents :
 
@@ -107,7 +108,7 @@ suggestion (« vouliez-vous dire `column` ? ») ; le reste s'applique.
 | personnes (pastilles, nom au survol ; italique si héritées) | `owner` | affichées |
 | autre champ, `clé: valeur` | son nom (`show client`) | masqué |
 | règle de récurrence | `recurrence` | masquée |
-| chemin de la note | `path` | affiché |
+| chemin de la note (à partir de `path root`, s'il y en a un) | `path` | affiché |
 
 - **Groupes** (`group by`) : les colonnes restent en haut ; une rangée repliable par valeur ;
   dans un groupe `owner`, la personne du groupe n'est pas répétée sur ses cartes.
