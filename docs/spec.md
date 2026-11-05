@@ -13,7 +13,8 @@ tâche. Les tâches restent des lignes Markdown ordinaires ; le tableau n'a pas 
 | Déplacer une carte demande plusieurs clics | Glisser-déposer, souris et tactile, avec annulation (§6) |
 | Syntaxe opaque : `[status:: x]`, JSON, coche implicite | Une ligne = une instruction ; une colonne = une coche, nommée par la table §3.1 (§4) |
 
-Hors périmètre : cartes-notes (une note = une carte), sous-tâches déplaçables. Les coches
+Hors périmètre : sous-tâches déplaçables. Les cartes-notes (une note = une carte, colonne
+donnée par une propriété) sont venues ensuite, voir la [syntaxe](reference/syntax.md#tableau-de-notes). Les coches
 des notes sont dessinées comme sur les cartes, sauf si on désactive ce réglage.
 
 ## 2. Principes
@@ -113,7 +114,9 @@ show due, owner, path
 | `sort by` | `priority`, `due`, `scheduled`, `start`, `done`, `created`, `path`, `file order`, `<clé>` ; `reverse` | `priority, due, file order` |
 | `group by` | Groupes en rangées : `<clé>` (dont `owner`), `priority`, `note`, `heading` | aucun |
 | `show` / `hide` | Éléments de la carte (§5) | §5 |
-| `width 200px` | Largeur minimale des colonnes ; le tableau prend toute la largeur du panneau | `240px` |
+| `width 200px` | Largeur minimale des colonnes ; le tableau prend toute la largeur du panneau, sauf une colonne seule, qui mesure `width` | `240px` |
+| `… \| color c` · `… \| size s` · `size s` | Teinte d'une colonne (palette du thème) ; taille des cartes, `small` · `medium` · `large` | neutre, `medium` |
+| `cards notes`, `columns by p` | Une carte par note, colonne donnée par la propriété `p`, écrite au dépôt | une carte par tâche |
 | `path root <dossier>` | Affichage seulement : les chemins sont montrés à partir de ce dossier (segments entiers, casse comprise, NFC = NFD, dernière occurrence) ; une note hors du dossier garde son chemin. Filtres et tri inchangés. Sans dossier : erreur | chemin dans le vault |
 
 Erreurs : une ligne non comprise est signalée sous le tableau avec son numéro et, si

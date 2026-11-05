@@ -35,7 +35,7 @@ vérification des sommes, est dans [installer](docs/how-to/install.md) ; depuis 
 Ce que le plugin fait du coffre, comme le demandent les règles du catalogue :
 
 - **Liste des notes** : pour rassembler les tâches du coffre, le plugin parcourt la liste de ses notes Markdown. Il interroge d'abord le cache d'Obsidian et **ne lit le contenu que des notes qui contiennent des tâches**. Le filtre `path includes` d'un tableau restreint ce qui est affiché, pas ce qui est parcouru.
-- **Écriture** : seulement quand vous déplacez, cochez ou modifiez une carte, et seulement **la ligne de cette tâche**, si elle est retrouvée intacte ; sinon rien n'est écrit.
+- **Écriture** : seulement quand vous déplacez, cochez ou modifiez une carte, et seulement **la ligne de cette tâche**, si elle est retrouvée intacte ; sinon rien n'est écrit. Sur un tableau de notes (`cards notes`), déplacer une carte écrit **la propriété de la colonne ou du groupe** dans les propriétés de cette note, et rien d'autre.
 - **Ni réseau, ni compte, ni télémétrie, ni publicité.** Aucun fichier hors du coffre. Code source ouvert, licence MIT ; les releases GitHub portent une attestation de provenance.
 
 ## Utiliser
@@ -58,6 +58,10 @@ autre colonne (souris, tactile ou clavier) ; sa **coche** la termine ; **clic dr
 priorité et échéance et **Ouvrir** la note, à côté ou dans un onglet. Chaque
 écriture se défait par **Annuler** dans la notification ou `Ctrl+Z`.
 
+Une colonne se teinte (`column [/] En cours | color blue`), les cartes changent de taille
+(`size small`, `size large` avec les sous-tâches), et `cards notes` fait une carte par note,
+rangée selon une propriété (`columns by statut`) que le glisser réécrit.
+
 `[owner:: Alice]` (ou `[o:: Alice]`) assigne une tâche ; `owner: Alice` dans les propriétés
 d'une note assigne toutes ses tâches. `group by owner` range les cartes par personne ; d'un
 groupe à l'autre, une carte se glisse aussi.
@@ -69,7 +73,8 @@ décrivent le reste.
 ## Ce qu'il garantit, et ce qu'il ne fait pas
 
 - Une action ne modifie que la ligne de la tâche, et seulement si elle la retrouve : si la
-  tâche a changé entre-temps, rien n'est écrit et une notification le dit.
+  tâche a changé entre-temps, rien n'est écrit et une notification le dit. Sur un tableau
+  de notes, elle ne modifie qu'une propriété de la note.
 - Rien n'est caché sans le dire : les tâches lues mais non affichées sont comptées dans le
   résumé, avec leur raison ; une ligne du bloc non comprise est signalée avec son numéro.
 - Le HTML d'une tâche est affiché comme du texte, jamais interprété.

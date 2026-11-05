@@ -1,7 +1,7 @@
 // The vault's tasks, read from Obsidian's metadata cache and each note's text. One index for
 // every board: a note is read only when a board needs it, and again only once it changed.
 import { getAllTags, TFile, type App, type CachedMetadata, type Plugin } from "obsidian";
-import { collectTasks, type NoteData, type Task } from "./collect";
+import { collectTasks, noteCard, type NoteData, type Task } from "./collect";
 
 interface Entry {
   stamp: string;
@@ -33,6 +33,8 @@ export class TaskIndex {
    */
   private reading = new Map<string, { stamp: string; cache: CachedMetadata; entry: Promise<Entry> }>();
   private listeners = new Set<Listener>();
+  /** Note cards as last built: the same object while the note's properties and tasks are the same. */
+  private cards = new Map<string, { key: string; tasks: Task[]; card: Task }>();
 
   constructor(private readonly app: App) {}
 
@@ -102,6 +104,36 @@ export class TaskIndex {
     }
     for (const path of [...this.notes.keys()]) if (scope(path) && !entries.has(path)) this.notes.delete(path);
     return files.flatMap(({ file }) => entries.get(file.path)!.tasks);
+  }
+
+  /**
+   * One card per note in `scope`, tasks or not, for a board of notes. Properties come from
+   * the cache; only notes with tasks are read, for their progress.
+   */
+  async noteCards(scope: Scope): Promise<Task[]> {
+    const byPath = new Map<string, Task[]>();
+    for (const task of await this.tasks(scope)) {
+      const list = byPath.get(task.path);
+      if (list) list.push(task);
+      else byPath.set(task.path, [task]);
+    }
+    const cards: Task[] = [];
+    const seen = new Set<string>();
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      if (!scope(file.path)) continue;
+      const cache = this.app.metadataCache.getFileCache(file);
+      const tags = (cache && getAllTags(cache)) ?? [];
+      const tasks = byPath.get(file.path) ?? [];
+      const key = JSON.stringify([cache?.frontmatter ?? null, tags]);
+      const old = this.cards.get(file.path);
+      const same = old && old.key === key && old.tasks.length === tasks.length && old.tasks.every((t, i) => t === tasks[i]);
+      const card = same ? old.card : noteCard(file.path, cache?.frontmatter, tags, tasks);
+      if (!same) this.cards.set(file.path, { key, tasks, card });
+      cards.push(card);
+      seen.add(file.path);
+    }
+    for (const path of [...this.cards.keys()]) if (scope(path) && !seen.has(path)) this.cards.delete(path);
+    return cards;
   }
 
   private read(file: TFile, cache: CachedMetadata): Promise<Entry> {

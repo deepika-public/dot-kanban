@@ -1,7 +1,8 @@
 // Tasks of one note, from Obsidian's metadata cache and the note's text. Pure: the cache
 // is handed over as plain data, so this is testable without Obsidian.
+import { resolveDay } from "./dates";
 import { statusOf, type Status } from "./statuses";
-import { fieldKey, parseLine, splitValues, type LineInfo } from "./task";
+import { DATE_KINDS, fieldKey, NO_PRIORITY, parseLine, priorityByName, splitValues, type DateKind, type LineInfo } from "./task";
 
 export interface NoteData {
   path: string;
@@ -28,8 +29,17 @@ export interface ResolvedField {
   source: FieldSource;
 }
 
+/** A sub-task as a large card lists it. */
+export interface Child {
+  symbol: string;
+  /** Markdown, as a card title. */
+  title: string;
+}
+
 export interface Task {
-  /** `path:line`, stable while the board shows it. */
+  /** `task`: a line of a note; `note`: the note itself, on a board of notes. */
+  kind: "task" | "note";
+  /** `path:line`, or the path of a note card; stable while the board shows it. */
   id: string;
   path: string;
   /** 0-based line, when read. */
@@ -45,6 +55,8 @@ export interface Task {
   /** Fields as resolved: line, then parent task, then note. */
   fields: Record<string, ResolvedField>;
   subtasks: { done: number; total: number } | null;
+  /** The sub-tasks, in note order: a task's, or the cards of a note card's note. */
+  children: Child[];
 }
 
 /** A property value as a list of texts: `Alice, Bob`, `[Alice, Bob]`, `[[Alice]]`. */
@@ -56,13 +68,59 @@ export function propValues(value: unknown): string[] {
   return [];
 }
 
-function noteOf(data: NoteData): Note {
+function noteOf(data: Pick<NoteData, "frontmatter" | "tags">): Note {
   const props: Record<string, string[]> = {};
   for (const [key, value] of Object.entries(data.frontmatter ?? {})) {
     const k = fieldKey(key);
     props[k] = [...(props[k] ?? []), ...propValues(value)];
   }
   return { props, tags: data.tags };
+}
+
+const isDone = (symbol: string) => symbol === "x" || symbol === "X";
+
+/**
+ * A note as one card, on a board of notes: its name as title, its properties as fields,
+ * its cards (tasks with no task above them) as sub-tasks. A `priority` or date property
+ * (`due: 2026-11-30`) reads as on a task.
+ */
+export function noteCard(path: string, frontmatter: Record<string, unknown> | undefined, tags: string[], tasks: readonly Task[]): Task {
+  const note = noteOf({ frontmatter, tags });
+  const name = (path.split("/").pop() ?? path).replace(/\.md$/i, "");
+  const dates: LineInfo["dates"] = {};
+  for (const kind of DATE_KINDS) {
+    const value = note.props[kind]?.[0];
+    const day = value && /^\d{4}-\d{2}-\d{2}/.test(value) ? resolveDay(value.slice(0, 10), 0) : null;
+    if (day !== null) dates[kind as DateKind] = day;
+  }
+  const priority = note.props.priority?.[0];
+  const info: LineInfo = {
+    symbol: "",
+    title: name,
+    description: name,
+    priority: (priority ? priorityByName(priority)?.level : undefined) ?? NO_PRIORITY,
+    dates,
+    recurrence: null,
+    fields: note.props,
+    tags: [],
+    dataview: false,
+  };
+  const counted = tasks.filter((task) => task.info.symbol !== "-");
+  return {
+    kind: "note",
+    id: path,
+    path,
+    line: -1,
+    text: "",
+    info,
+    status: null,
+    note,
+    heading: null,
+    // The note's own properties: shown as written on the card, not as inherited.
+    fields: Object.fromEntries(Object.entries(note.props).map(([k, values]) => [k, { values, source: "line" as const }])),
+    subtasks: counted.length ? { done: counted.filter((task) => isDone(task.info.symbol)).length, total: counted.length } : null,
+    children: tasks.map((task) => ({ symbol: task.info.symbol, title: task.info.title })),
+  };
 }
 
 /**
@@ -137,7 +195,9 @@ export function collectTasks(data: NoteData): Task[] {
     const info = parseLine(text);
     if (!info) continue;
     const counted = (childTasks.get(item.line) ?? []).filter((c) => c.task !== "-");
+    const children = childTasks.get(item.line) ?? [];
     tasks.push({
+      kind: "task",
       id: `${data.path}:${item.line}`,
       path: data.path,
       line: item.line,
@@ -150,6 +210,7 @@ export function collectTasks(data: NoteData): Task[] {
       subtasks: counted.length
         ? { done: counted.filter((c) => c.task === "x" || c.task === "X").length, total: counted.length }
         : null,
+      children: children.map((c) => ({ symbol: c.task!, title: parseLine(data.lines[c.line] ?? "")?.title ?? "" })),
     });
   }
   return tasks;
