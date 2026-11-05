@@ -59,12 +59,14 @@ width 220px
 
 | Instruction | Effet | Par défaut |
 | --- | --- | --- |
-| `column [c] Libellé` | une colonne par coche, dans l'ordre écrit ; libellé facultatif ; `\| sort by …` et `\| limit n` propres à la colonne | `[ ]`, `[<]`, `[/]`, `[x]` |
+| `column [c] Libellé` | une colonne par coche, dans l'ordre écrit ; libellé facultatif ; `\| sort by …`, `\| limit n`, `\| color blue`, `\| size large` propres à la colonne | `[ ]`, `[<]`, `[/]`, `[x]` |
 | filtre | ne garder que les tâches qui le vérifient (toutes les lignes s'appliquent) | tout le vault |
 | `sort by a, b reverse` | ordre des cartes : `priority`, une date, `path`, `file order`, un champ | `priority, due, file order` |
 | `group by x` | une rangée par valeur : un champ (`owner`…), `priority`, `note`, `heading` | aucun |
 | `show` / `hide` | éléments des cartes | `priority, due, subtasks, owner, path` |
-| `width` | largeur minimale d'une colonne | `240px` |
+| `width` | largeur minimale d'une colonne ; une colonne seule mesure exactement `width` | `240px` |
+| `size small` · `medium` · `large` | une ligne par carte ; la carte habituelle ; la carte et ses sous-tâches | `medium` |
+| `cards notes` + `columns by statut` | une carte par note, dans la colonne de sa propriété `statut` (`column "en cours" Maintenant`) ; glisser réécrit la propriété | une carte par tâche |
 | `path root dossier` | chemins affichés à partir de ce dossier (`path root Projets` : `Site.md`) ; les filtres gardent le chemin complet | chemin dans le vault |
 
 **Filtres**, à la manière de Tasks, sans casse ni accents :
@@ -96,7 +98,8 @@ suggestion (« vouliez-vous dire `column` ? ») ; le reste s'applique.
 
 - **Le tableau** occupe toute la largeur du panneau, aux couleurs du thème actif (clair ou
   sombre) ; les colonnes ont la même hauteur.
-- **Une colonne** : icône du statut, libellé, coche, nombre de cartes.
+- **Une colonne** : icône du statut, libellé, coche, nombre de cartes ; fond teinté avec
+  `| color …`. Seule sur son tableau, elle garde la largeur `width`.
 - **Une carte** :
 
 | Élément | Réglage | Par défaut |
@@ -110,6 +113,10 @@ suggestion (« vouliez-vous dire `column` ? ») ; le reste s'applique.
 | règle de récurrence | `recurrence` | masquée |
 | chemin de la note (à partir de `path root`, s'il y en a un) | `path` | affiché |
 
+- **Tailles** : `size small` réduit chaque carte à sa première ligne, `size large` y ajoute
+  la liste des sous-tâches ; une colonne peut avoir la sienne.
+- **Tableau de notes** (`cards notes`) : une carte par note, titrée du nom de la note, avec
+  ses propriétés en champs et la progression de ses tâches.
 - **Groupes** (`group by`) : les colonnes restent en haut ; une rangée repliable par valeur ;
   dans un groupe `owner`, la personne du groupe n'est pas répétée sur ses cartes.
 - **Le résumé** : nombre de cartes, filtres du bloc, et **écartées** : les tâches lues mais
@@ -123,6 +130,7 @@ suggestion (« vouliez-vous dire `column` ? ») ; le reste s'applique.
 | --- | --- |
 | Glisser vers une autre colonne | la coche de la colonne ; ✅ ou ❌ daté du jour en entrant dans `[x]` ou `[-]`, retiré en en sortant |
 | Glisser vers un autre groupe | la valeur du groupe sur la ligne (`[owner:: Bob]`, emoji de priorité) |
+| Glisser une carte de note | la propriété de la colonne (`statut: livré`), ou du groupe, dans les propriétés de la note |
 | Glisser vers le haut ou le bas | dans une colonne triée par priorité, des bandes 🔺 … ⏬ apparaissent : déposer dans une bande écrit sa priorité (annoncée par l'emplacement) ; possible en changeant aussi de colonne |
 | Clic sur la coche | `[x]` et ✅ ; depuis `[x]`, retour à `[ ]` |
 | Clic sur la carte | la sélectionne ; si une note est ouverte à côté, y montre sa tâche |

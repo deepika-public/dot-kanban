@@ -12,11 +12,21 @@ export interface SortKey {
   reverse: boolean;
 }
 
+/** Card sizes: `small` is one line, `medium` the usual card, `large` adds the sub-tasks. */
+export type CardSize = "small" | "medium" | "large";
+/** Column tints, from the theme's palette. */
+export const COLORS = ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"] as const;
+
 export interface ColumnDef {
-  status: Status;
+  /** The checkbox of the column; null on a board of notes. */
+  status: Status | null;
+  /** On a board of notes, the value of the `columns by` property, as written in the block. */
+  value: string | null;
   label: string;
   sort: SortKey[] | null;
   limit: number | null;
+  color: string | null;
+  size: CardSize | null;
 }
 
 export interface Filter {
@@ -45,6 +55,11 @@ export interface Query {
   /** Card elements shown, §5 of the spec. */
   show: Set<string>;
   width: string | null;
+  /** `tasks`: one card per task; `notes`: one card per note. */
+  cards: "tasks" | "notes";
+  /** On a board of notes, the property whose value gives the column. */
+  columnsBy: string | null;
+  size: CardSize;
   /**
    * `path root`: the folder the cards' paths are shown from, its segments without the
    * surrounding `/`, in NFC. Null to show the path in the vault. Display only.
@@ -64,7 +79,7 @@ export const BUILT_IN_SHOW = ["priority", ...DATE_KINDS, "subtasks", "recurrence
 const isBuiltInGroup = (key: string) => ["priority", "note", "heading"].includes(key);
 const BUILT_IN_SORTS = ["priority", ...DATE_KINDS, "path", "file order"];
 const KEYWORDS = [
-  "column", "sort", "group", "show", "hide", "width", "not", "path", "heading", "description", "filename",
+  "column", "columns", "cards", "size", "sort", "group", "show", "hide", "width", "not", "path", "heading", "description", "filename",
   "tags", "tag", "priority", "has", "no", "is", ...DATE_KINDS,
 ];
 
@@ -276,22 +291,44 @@ export function inScope(query: Query, path: string): boolean {
 
 /* ---------- the block ---------- */
 
+function parseSize(text: string): CardSize {
+  const size = text.trim().toLowerCase();
+  if (size === "small" || size === "short") return "small";
+  if (size === "medium" || size === "large") return size;
+  return fail(t("badSize", { text }));
+}
+
 function parseColumn(rest: string, query: Query) {
   const [head, ...options] = rest.split("|").map((s) => s.trim());
-  const m = head.match(/^(\[.\]|\S+)\s*(.*)$/);
-  const status = m ? findStatus(m[1]) : null;
-  if (!m || !status) return fail(t("unknownStatus", { ref: m?.[1] ?? head }));
-  if (query.columns.some((c) => c.status === status)) fail(t("duplicateColumn", { ref: `[${status.symbol}]` }));
-  const column: ColumnDef = { status, label: m[2].trim() || status.name, sort: null, limit: null };
+  let column: ColumnDef;
+  if (query.cards === "notes") {
+    const m = head.match(/^(?:"([^"]+)"|(\S+))\s*(.*)$/) ?? fail(t("emptyList", { text: "column" }));
+    const value = (m[1] ?? m[2]).trim();
+    if (query.columns.some((c) => c.value !== null && fold(c.value) === fold(value))) fail(t("duplicateColumn", { ref: `"${value}"` }));
+    column = { status: null, value, label: m[3].trim() || value, sort: null, limit: null, color: null, size: null };
+  } else {
+    const m = head.match(/^(\[.\]|\S+)\s*(.*)$/);
+    const status = m ? findStatus(m[1]) : null;
+    if (!m || !status) return fail(t("unknownStatus", { ref: m?.[1] ?? head }));
+    if (query.columns.some((c) => c.status === status)) fail(t("duplicateColumn", { ref: `[${status.symbol}]` }));
+    column = { status, value: null, label: m[2].trim() || status.name, sort: null, limit: null, color: null, size: null };
+  }
   for (const option of options) {
     const sort = option.match(/^sort by\s+(.+)$/i);
     const limit = option.match(/^limit\s+(.+)$/i);
+    const color = option.match(/^colou?r\s+(.+)$/i);
+    const size = option.match(/^size\s+(.+)$/i);
     if (sort) column.sort = parseSort(sort[1]);
     else if (limit) {
       const n = Number(limit[1]);
       if (!Number.isInteger(n) || n < 1) fail(t("badLimit", { text: limit[1] }));
       column.limit = n;
-    } else fail(t("unknownInstruction", { text: option }));
+    } else if (color) {
+      const name = color[1].trim().toLowerCase();
+      if (!(COLORS as readonly string[]).includes(name)) fail(t("badColor", { text: color[1], colors: COLORS.join(", ") }));
+      column.color = name;
+    } else if (size) column.size = parseSize(size[1]);
+    else fail(t("unknownInstruction", { text: option }));
   }
   query.columns.push(column);
 }
@@ -304,9 +341,19 @@ export function parseQuery(source: string): Query {
     groupBy: null,
     show: new Set(DEFAULT_SHOW),
     width: null,
+    cards: "tasks",
+    columnsBy: null,
+    size: "medium",
     pathRoot: null,
     errors: [],
   };
+  const report = (index: number, line: string, error: unknown) => {
+    if (!(error instanceof ParseError)) throw error;
+    query.errors.push({ line: index + 1, text: line, message: error.message });
+  };
+  // Columns are read last: what they name depends on `cards`, written anywhere.
+  const columns: { index: number; line: string; rest: string }[] = [];
+  let cardsLine = -1;
   source.split("\n").forEach((raw, index) => {
     const line = raw.trim();
     if (!line || line.startsWith("#")) return;
@@ -314,7 +361,23 @@ export function parseQuery(source: string): Query {
       const [, word, rest = ""] = line.match(/^(\S+)\s*(.*)$/)!;
       switch (word.toLowerCase()) {
         case "column":
-          return parseColumn(rest, query);
+          columns.push({ index, line, rest });
+          return;
+        case "cards": {
+          const kind = rest.trim().toLowerCase();
+          if (kind !== "tasks" && kind !== "notes") fail(t("badCards", { text: rest }));
+          query.cards = kind as Query["cards"];
+          cardsLine = index;
+          return;
+        }
+        case "columns": {
+          const m = rest.match(/^by\s+([\w][\w-]*)$/i) ?? fail(t("badColumnsBy", { text: rest }));
+          query.columnsBy = fieldKey(m[1]);
+          return;
+        }
+        case "size":
+          query.size = parseSize(rest);
+          return;
         case "sort": {
           const m = rest.match(/^by\s+(.+)$/i) ?? fail(t("badSort", { text: rest }));
           query.sort = parseSort(m[1]);
@@ -352,16 +415,28 @@ export function parseQuery(source: string): Query {
           query.filters.push(parseFilter(line));
       }
     } catch (error) {
-      if (!(error instanceof ParseError)) throw error;
-      query.errors.push({ line: index + 1, text: line, message: error.message });
+      report(index, line, error);
     }
   });
-  if (!query.columns.length) {
-    for (const symbol of DEFAULT_COLUMNS) {
-      const status = statusOf(symbol)!;
-      query.columns.push({ status, label: status.name, sort: null, limit: null });
+  if (query.cards === "notes" && !query.columnsBy) {
+    report(cardsLine, "cards notes", new ParseError(t("notesNeedColumnsBy")));
+    query.cards = "tasks";
+  }
+  for (const { index, line, rest } of columns) {
+    try {
+      parseColumn(rest, query);
+    } catch (error) {
+      report(index, line, error);
     }
   }
+  if (!query.columns.length && query.cards === "tasks") {
+    for (const symbol of DEFAULT_COLUMNS) {
+      const status = statusOf(symbol)!;
+      query.columns.push({ status, value: null, label: status.name, sort: null, limit: null, color: null, size: null });
+    }
+  }
+  if (!query.columns.length) query.errors.push({ line: cardsLine + 1, text: "cards notes", message: t("notesNeedColumns") });
+  query.errors.sort((a, b) => a.line - b.line);
   return query;
 }
 

@@ -16,18 +16,19 @@ import {
   type MenuItem,
   type WorkspaceLeaf,
 } from "obsidian";
-import { compareTasks, laneEdit, layoutBoard, type BoardModel, type Lane, type Toolbar } from "./board";
-import { fieldValues, type Task } from "./collect";
+import { compareTasks, laneEdit, laneValues, layoutBoard, type BoardModel, type Lane, type Toolbar } from "./board";
+import { fieldValues, type Child, type Task } from "./collect";
 import { dayLabel, localDay, type Day } from "./dates";
 import { CardDrag } from "./dnd";
 import { language, priorityName, t } from "./i18n";
 import { statusIcon } from "./icons";
 import { HiddenModal, LegendModal } from "./modals";
-import { BUILT_IN_SHOW, inScope, parseQuery, shownPath, type ColumnDef, type Query } from "./query";
+import { BUILT_IN_SHOW, inScope, parseQuery, shownPath, type CardSize, type ColumnDef, type Query } from "./query";
 import { statusOf, type Status } from "./statuses";
 import { tasksApi } from "./tasks-api";
 import {
   checkboxOf,
+  fieldKey,
   locateTask,
   PRIORITIES,
   priorityByLevel,
@@ -70,10 +71,10 @@ const PRIORITY_ICONS: Record<string, string> = {
 };
 const PERSON_COLORS = ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"];
 
-interface Undo {
-  path: string;
-  rewrite: Rewrite;
-}
+/** A line rewritten, or a property of a note set (`before` undefined: the property was absent). */
+type Undo =
+  | { kind: "line"; path: string; rewrite: Rewrite }
+  | { kind: "prop"; path: string; key: string; before: unknown; after: unknown };
 
 interface Shell {
   bar: HTMLElement;
@@ -166,8 +167,11 @@ export class TikBoard extends MarkdownRenderChild {
       start: () => this.showBands(),
       hover: (card, target, y) => this.showPlaceholder(card, target, y),
       drop: (card, target, y) => {
+        // The band is the one the placeholder shows, read before the placeholder goes:
+        // removing it shortens its band, which could leave the pointer over the next one.
+        const band = target ? this.placeholder?.closest<HTMLElement>(".dot-kanban-band") ?? this.bandAt(target, y) : null;
         this.hidePlaceholder();
-        if (target) void this.dropCard(card, target, y);
+        if (target) void this.dropCard(card, target, band);
         else this.render();
       },
       cancel: () => {
@@ -215,7 +219,7 @@ export class TikBoard extends MarkdownRenderChild {
     this.cancelRefresh();
     if (!quiet) this.mustRender = true;
     const generation = ++this.generation;
-    const tasks = await this.index.tasks(this.reads);
+    const tasks = this.notesBoard ? await this.index.noteCards(this.reads) : await this.index.tasks(this.reads);
     if (generation !== this.generation) return;
     // An unchanged note keeps its task objects: same objects, same day, same board.
     const day = this.today();
@@ -229,6 +233,11 @@ export class TikBoard extends MarkdownRenderChild {
 
   private today(): Day {
     return localDay(new Date());
+  }
+
+  /** One card per note, its column given by a property. */
+  private get notesBoard(): boolean {
+    return this.query.cards === "notes";
   }
 
   /* ---------- shell: errors, toolbar ---------- */
@@ -265,7 +274,7 @@ export class TikBoard extends MarkdownRenderChild {
     edit.onclick = () => void this.editSource();
     const legend = bar.createEl("button", { cls: "dot-kanban-icon-button", attr: { "aria-label": t("legend") } });
     setIcon(legend, "help-circle");
-    legend.onclick = () => new LegendModal(this.app, this.query.columns).open();
+    legend.onclick = () => new LegendModal(this.app, this.query.columns, this.query.columnsBy).open();
 
     const scroller = root.createDiv({ cls: "dot-kanban-scroller" });
     const board = scroller.createDiv({ cls: "dot-kanban-board" });
@@ -289,7 +298,7 @@ export class TikBoard extends MarkdownRenderChild {
   }
 
   private chooseLanes(e: MouseEvent) {
-    const keys = [OWNER, "priority", "note", "heading"];
+    const keys = this.notesBoard ? [OWNER] : [OWNER, "priority", "note", "heading"];
     if (this.query.groupBy && !keys.includes(this.query.groupBy)) keys.push(this.query.groupBy);
     const menu = new Menu();
     for (const key of [null, ...keys]) {
@@ -378,7 +387,10 @@ export class TikBoard extends MarkdownRenderChild {
     shell.lanes.toggleClass("is-active", !!this.toolbar.groupBy);
 
     shell.summary.empty();
-    const parts = [model.shown === 1 ? t("task") : t("tasks", { n: model.shown }), ...this.query.filters.map((f) => f.text)];
+    const count = this.notesBoard
+      ? model.shown === 1 ? t("note") : t("notes", { n: model.shown })
+      : model.shown === 1 ? t("task") : t("tasks", { n: model.shown });
+    const parts = [count, ...this.query.filters.map((f) => f.text)];
     shell.summary.createSpan({ text: parts.join(" · ") });
     if (model.hidden.length) {
       shell.summary.appendText(" · ");
@@ -395,11 +407,13 @@ export class TikBoard extends MarkdownRenderChild {
     board.empty();
     board.style.setProperty("--dot-kanban-columns", String(model.columns.length));
     board.toggleClass("is-grouped", !!model.lanes);
+    // A lone column keeps its width: it does not stretch across the page.
+    board.toggleClass("is-single", model.columns.length === 1);
 
     if (!model.shown && !model.lanes) {
       const filters = this.query.filters.map((f) => `« ${f.text} »`).join(", ");
       this.containerEl.querySelector(".dot-kanban-empty")?.remove();
-      shell.scroller.createDiv({ cls: "dot-kanban-empty", text: filters ? t("emptyFilters", { filters }) : t("empty") });
+      shell.scroller.createDiv({ cls: "dot-kanban-empty", text: filters ? t("emptyFilters", { filters }) : t(this.notesBoard ? "emptyNotes" : "empty") });
     } else this.containerEl.querySelector(".dot-kanban-empty")?.remove();
 
     if (model.lanes) {
@@ -408,7 +422,7 @@ export class TikBoard extends MarkdownRenderChild {
       model.lanes.forEach((lane, l) => this.renderLane(board, lane, l));
     } else {
       model.columns.forEach((column, c) => {
-        const section = board.createDiv({ cls: "dot-kanban-column", attr: { "data-status": column.def.status.name } });
+        const section = board.createDiv({ cls: "dot-kanban-column", attr: { "data-status": column.def.status?.name ?? null, "data-color": column.def.color } });
         this.columnHeader(section.createDiv({ cls: "dot-kanban-column-head" }), column.def, column.cards.length);
         const cell = section.createDiv({ cls: "dot-kanban-cell", attr: { "data-column": String(c), "data-lane": "-1" } });
         this.renderCell(cell, column.cards, c, -1, null);
@@ -427,10 +441,14 @@ export class TikBoard extends MarkdownRenderChild {
   }
 
   private columnHeader(head: HTMLElement, def: ColumnDef, count: number) {
-    head.setAttr("data-status", def.status.name);
-    statusIcon(head, def.status);
+    if (def.color) head.setAttr("data-color", def.color);
+    if (def.status) {
+      head.setAttr("data-status", def.status.name);
+      statusIcon(head, def.status);
+    }
     head.createSpan({ cls: "dot-kanban-column-label", text: def.label });
-    head.createSpan({ cls: "dot-kanban-column-symbol dot-kanban-mono", text: `[${def.status.symbol}]` });
+    const symbol = def.status ? `[${def.status.symbol}]` : def.value !== def.label ? def.value ?? "" : "";
+    if (symbol) head.createSpan({ cls: "dot-kanban-column-symbol dot-kanban-mono", text: symbol });
     head.createSpan({ cls: "dot-kanban-column-count", text: String(count) });
   }
 
@@ -460,7 +478,7 @@ export class TikBoard extends MarkdownRenderChild {
     if (!open) return;
     const row = wrap.createDiv({ cls: "dot-kanban-lane-row" });
     lane.cells.forEach((cards, c) => {
-      const cell = row.createDiv({ cls: "dot-kanban-cell", attr: { "data-column": String(c), "data-lane": String(index) } });
+      const cell = row.createDiv({ cls: "dot-kanban-cell", attr: { "data-column": String(c), "data-lane": String(index), "data-color": this.model?.columns[c]?.def.color ?? null } });
       this.renderCell(cell, cards, c, index, lane);
     });
   }
@@ -492,22 +510,32 @@ export class TikBoard extends MarkdownRenderChild {
   private renderCard(cell: HTMLElement, task: Task, column: number, lane: number, inLane: Lane | null) {
     const show = this.query.show;
     const today = this.today();
+    const size: CardSize = this.model?.columns[column]?.def.size ?? this.query.size;
     const el = cell.createDiv({
       cls: "dot-kanban-card",
-      attr: { "data-id": task.id, "data-column": String(column), "data-lane": String(lane), tabindex: "0", "data-status": task.status?.name ?? "unknown" },
+      attr: {
+        "data-id": task.id,
+        "data-column": String(column),
+        "data-lane": String(lane),
+        tabindex: "0",
+        "data-status": task.kind === "note" ? "note" : task.status?.name ?? "unknown",
+        "data-size": size,
+      },
     });
     el.toggleClass("is-focused", task.id === this.focused);
 
     const row = el.createDiv({ cls: "dot-kanban-card-row" });
-    const check = row.createEl("button", { cls: "dot-kanban-check", attr: { "aria-label": task.status?.type === "DONE" ? statusOf(" ")!.name : statusOf("x")!.name } });
-    statusIcon(check, task.status);
-    check.onclick = (e) => {
-      e.stopPropagation();
-      void this.setTaskStatus(task, statusOf(task.status?.type === "DONE" ? " " : "x")!);
-    };
+    if (task.kind === "note") setIcon(row.createSpan({ cls: "dot-kanban-note-icon" }), "file-text");
+    else {
+      const check = row.createEl("button", { cls: "dot-kanban-check", attr: { "aria-label": task.status?.type === "DONE" ? statusOf(" ")!.name : statusOf("x")!.name } });
+      statusIcon(check, task.status);
+      check.onclick = (e) => {
+        e.stopPropagation();
+        void this.setTaskStatus(task, statusOf(task.status?.type === "DONE" ? " " : "x")!);
+      };
+    }
     const title = row.createDiv({ cls: "dot-kanban-card-title" });
-    if (!task.info.title || isPlain(task.info.title)) title.createEl("p", { text: task.info.title || "…", attr: { dir: "auto" } });
-    else void MarkdownRenderer.render(this.app, safeMarkdown(task.info.title), title, task.path, this.rendered!);
+    this.markdown(title, task.info.title, task.path);
     const level = priorityByLevel(task.info.priority);
     if (show.has("priority") && PRIORITY_ICONS[level.name]) {
       const p = row.createSpan({ cls: "dot-kanban-priority", attr: { "data-priority": level.name, "aria-label": `${t("priority")} : ${priorityName(level.name)}` } });
@@ -519,6 +547,9 @@ export class TikBoard extends MarkdownRenderChild {
       e.stopPropagation();
       this.cardMenu(task, e);
     };
+    this.cardEvents(el, task);
+    // A small card is its first line only.
+    if (size === "small") return;
 
     const meta = createDiv({ cls: "dot-kanban-card-meta" });
     for (const kind of ["due", "scheduled", "start", "created", "done", "cancelled"] as DateKind[]) {
@@ -558,12 +589,32 @@ export class TikBoard extends MarkdownRenderChild {
     }
     if (meta.childElementCount) el.appendChild(meta);
 
+    if (size === "large" && task.children.length) this.children(el, task.children, task.path);
     if (show.has("path")) {
       const path = this.shownPath(task);
       // Shown from the `path root`: the path in the vault on hover.
       el.createDiv({ cls: "dot-kanban-card-source", text: path, attr: path === task.path ? {} : { "aria-label": task.path } });
     }
+  }
 
+  /** Markdown of a title, as text when it has no Markdown. */
+  private markdown(parent: HTMLElement, text: string, path: string) {
+    if (!text || isPlain(text)) parent.createEl("p", { text: text || "…", attr: { dir: "auto" } });
+    else void MarkdownRenderer.render(this.app, safeMarkdown(text), parent, path, this.rendered!);
+  }
+
+  /** The sub-tasks of a large card, each with its checkbox. */
+  private children(card: HTMLElement, children: readonly Child[], path: string) {
+    const list = card.createEl("ul", { cls: "dot-kanban-card-children" });
+    for (const child of children) {
+      const status = statusOf(child.symbol);
+      const item = list.createEl("li", { cls: "dot-kanban-card-child", attr: { "data-status": status?.name ?? "unknown" } });
+      statusIcon(item, status);
+      this.markdown(item.createDiv({ cls: "dot-kanban-card-child-title" }), child.title, path);
+    }
+  }
+
+  private cardEvents(el: HTMLElement, task: Task) {
     el.addEventListener("click", (e) => this.onCardClick(e, task));
     el.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -630,10 +681,15 @@ export class TikBoard extends MarkdownRenderChild {
     };
     sub(t("moveTo"), "arrow-right-left", (m) => {
       for (const column of this.query.columns) {
-        if (column.status === task.status) continue;
-        m.addItem((item) => item.setTitle(column.label).onClick(() => void this.setTaskStatus(task, column.status)));
+        if (this.inColumn(task, column)) continue;
+        m.addItem((item) => item.setTitle(column.label).onClick(() => void this.moveCard(task, column)));
       }
     });
+    if (task.kind === "note") {
+      menu.addSeparator();
+      menu.addItem((item) => item.setTitle(t("openNote")).setIcon("columns-2").onClick(() => void this.openTask(task, "side")));
+      return void menu.showAtMouseEvent(e);
+    }
     sub(t("priority"), "signal", (m) => {
       for (const p of PRIORITIES) {
         m.addItem((item) =>
@@ -683,6 +739,7 @@ export class TikBoard extends MarkdownRenderChild {
    * its sort starts with the priority, and not when the groups already are priorities.
    */
   private bandLevels(def: ColumnDef): Priority[] | null {
+    if (this.notesBoard) return null;
     const first = (def.sort ?? this.query.sort)[0];
     if (first?.key !== "priority" || this.toolbar.groupBy === "priority") return null;
     return first.reverse ? [...PRIORITIES].reverse() : [...PRIORITIES];
@@ -762,21 +819,28 @@ export class TikBoard extends MarkdownRenderChild {
    * A card dropped in a cell: the column gives the status, the group the group's value,
    * the band the priority. Nothing changes: the board is drawn again, bands gone.
    */
-  private async dropCard(card: HTMLElement, cell: HTMLElement, y: number) {
+  private async dropCard(card: HTMLElement, cell: HTMLElement, band: HTMLElement | null) {
     const task = this.taskOf(card);
-    const band = this.bandAt(cell, y);
     if (!task || !this.model) return this.render();
     const fromLane = Number(card.dataset.lane);
     const { column, lane, laneIndex } = this.target(cell);
     if (laneIndex !== fromLane && !this.model.lanesEditable) return this.render();
     const fromValue = fromLane >= 0 ? this.model.lanes?.[fromLane]?.value ?? null : null;
+    if (task.kind === "note") {
+      const props: Record<string, string[]> = {};
+      if (!this.inColumn(task, column.def)) props[this.query.columnsBy!] = [column.def.value!];
+      if (laneIndex !== fromLane && lane !== null && this.toolbar.groupBy) props[this.toolbar.groupBy] = laneValues(task, this.toolbar.groupBy, fromValue, lane.value);
+      if (!Object.keys(props).length) return this.render();
+      const where = [column.def.label, lane && laneIndex !== fromLane ? this.laneLabel(lane) : null].filter(Boolean).join(" · ");
+      return void (await this.writeProps(task, props, t("moved", { title: task.info.description, column: where })));
+    }
     const laneFn = laneIndex !== fromLane && lane !== null && this.toolbar.groupBy ? laneEdit(task, this.toolbar.groupBy, fromValue, lane.value) : null;
     const level = band ? Number(band.dataset.level) : task.info.priority;
     const priorityFn = level !== task.info.priority ? (line: string) => setPriority(line, level) : null;
     if (column.def.status === task.status && !laneFn && !priorityFn) return this.render();
     const edits = [laneFn, priorityFn].filter((f): f is (line: string) => string => f !== null);
     const where = [lane ? this.laneLabel(lane) : null, priorityFn ? priorityName(priorityByLevel(level).name) : null].filter(Boolean).join(" · ");
-    await this.setTaskStatus(task, column.def.status, edits.length ? (line) => edits.reduce((l, f) => f(l), line) : undefined, where || undefined);
+    await this.setTaskStatus(task, column.def.status!, edits.length ? (line) => edits.reduce((l, f) => f(l), line) : undefined, where || undefined);
   }
 
   /* ---------- keyboard ---------- */
@@ -802,9 +866,9 @@ export class TikBoard extends MarkdownRenderChild {
         this.liftTarget(card, next);
       } else if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
-        const target = this.model.columns[this.lifted.column].def.status;
+        const target = this.model.columns[this.lifted.column].def;
         this.dropLift(card);
-        if (target !== task.status) void this.setTaskStatus(task, target);
+        if (!this.inColumn(task, target)) void this.moveCard(task, target);
       } else if (e.key === "Escape") {
         e.preventDefault();
         this.dropLift(card);
@@ -867,8 +931,8 @@ export class TikBoard extends MarkdownRenderChild {
     this.focus(task.id);
     const file = this.fileAt(task.path);
     if (!file) return void new Notice(t("missingFile", { path: task.path }));
-    const lines = (await this.app.vault.cachedRead(file)).split("\n").map((l) => l.replace(/\r$/, ""));
-    const line = locateTask(lines, { line: task.line, text: task.text });
+    const lines = task.kind === "note" ? [] : (await this.app.vault.cachedRead(file)).split("\n").map((l) => l.replace(/\r$/, ""));
+    const line = task.kind === "note" ? null : locateTask(lines, { line: task.line, text: task.text });
     const follow = typeof where !== "string";
     const leaf = follow ? where : this.sideLeaf();
     await leaf.openFile(file, { active: !follow, eState: line === null ? undefined : { line } });
@@ -930,14 +994,56 @@ export class TikBoard extends MarkdownRenderChild {
       this.scheduleRefresh(0);
       return false;
     }
-    this.undos.push({ path: task.path, rewrite });
-    if (this.undos.length > UNDO_DEPTH) this.undos.shift();
+    this.pushUndo({ kind: "line", path: task.path, rewrite });
     this.index.wrote(file, rewrite.content);
     // The task itself is the last line Tasks writes for a recurrence.
     this.focused = `${task.path}:${rewrite.line + rewrite.after.length - 1}`;
     await this.refresh();
     this.notify(message ?? t("updated", { title: task.info.description }));
     return true;
+  }
+
+  private pushUndo(undo: Undo) {
+    this.undos.push(undo);
+    if (this.undos.length > UNDO_DEPTH) this.undos.shift();
+  }
+
+  /** Whether a card is already in a column: its checkbox, or its property's value. */
+  private inColumn(task: Task, def: ColumnDef): boolean {
+    if (task.kind !== "note") return def.status === task.status;
+    const by = this.query.columnsBy;
+    return !!by && def.value !== null && fieldValues(task, by).some((v) => valueText(v).toLowerCase() === def.value!.toLowerCase());
+  }
+
+  /** Puts a card in a column: writes the checkbox of a task, or the property of a note. */
+  private async moveCard(task: Task, def: ColumnDef) {
+    if (task.kind === "note") {
+      await this.writeProps(task, { [this.query.columnsBy!]: [def.value!] }, t("moved", { title: task.info.description, column: def.label }));
+    } else await this.setTaskStatus(task, def.status!);
+  }
+
+  /**
+   * Sets properties of a note card's note, keys as fields (`statut`): a property already
+   * there keeps its spelling, one value is written as text, several as a list, none removes it.
+   */
+  private async writeProps(task: Task, props: Record<string, string[]>, message: string) {
+    this.cancelRefresh();
+    const file = this.fileAt(task.path);
+    if (!file) return void new Notice(t("missingFile", { path: task.path }));
+    const undos: Undo[] = [];
+    await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+      for (const [key, values] of Object.entries(props)) {
+        const name = Object.keys(fm).find((k) => fieldKey(k) === key) ?? key;
+        const before = fm[name];
+        const after = values.length === 0 ? undefined : values.length === 1 ? values[0] : [...values];
+        if (after === undefined) delete fm[name];
+        else fm[name] = after;
+        undos.push({ kind: "prop", path: task.path, key: name, before, after });
+      }
+    });
+    for (const undo of undos) this.pushUndo(undo);
+    this.focused = task.id;
+    this.notify(message);
   }
 
   private notify(message: string) {
@@ -984,6 +1090,17 @@ export class TikBoard extends MarkdownRenderChild {
     const file = this.fileAt(last.path);
     if (!file) return;
     let ok = false;
+    if (last.kind === "prop") {
+      // Only if the property still holds what the board wrote.
+      await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+        ok = JSON.stringify(fm[last.key]) === JSON.stringify(last.after);
+        if (!ok) return;
+        if (last.before === undefined) delete fm[last.key];
+        else fm[last.key] = last.before;
+      });
+      new Notice(ok ? t("undone") : t("cannotUndo"));
+      return;
+    }
     await this.app.vault.process(file, (data) => {
       const reverted = revertRewrite(data, last.rewrite);
       ok = reverted !== null;

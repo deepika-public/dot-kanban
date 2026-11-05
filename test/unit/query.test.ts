@@ -10,7 +10,7 @@ beforeEach(() => setLanguage("en"));
 describe("the block", () => {
   it("defaults to the cycle's four columns, the default sort and card", () => {
     const q = parseQuery("");
-    expect(q.columns.map((c) => [c.status.symbol, c.label])).toEqual([[" ", "to-do"], ["<", "scheduling"], ["/", "incomplete"], ["x", "done"]]);
+    expect(q.columns.map((c) => [c.status!.symbol, c.label])).toEqual([[" ", "to-do"], ["<", "scheduling"], ["/", "incomplete"], ["x", "done"]]);
     expect(q.sort.map((s) => s.key)).toEqual(["priority", "due", "file order"]);
     expect([...q.show]).toEqual(["priority", "due", "subtasks", "owner", "path"]);
     expect(q.errors).toEqual([]);
@@ -18,7 +18,7 @@ describe("the block", () => {
 
   it("reads columns by checkbox or name, with label, sort and limit", () => {
     const q = parseQuery(["column [ ]", "column question À clarifier", "column [x] Fait | sort by done reverse | limit 20"].join("\n"));
-    expect(q.columns.map((c) => [c.status.symbol, c.label, c.limit])).toEqual([[" ", "to-do", null], ["?", "À clarifier", null], ["x", "Fait", 20]]);
+    expect(q.columns.map((c) => [c.status!.symbol, c.label, c.limit])).toEqual([[" ", "to-do", null], ["?", "À clarifier", null], ["x", "Fait", 20]]);
     expect(q.columns[2].sort).toEqual([{ key: "done", reverse: true }]);
   });
 
@@ -34,7 +34,7 @@ describe("the block", () => {
     const q = parseQuery("colum [x]\ncolumn [r]\ncolumn [x]\ncolumn [x]\nwidth wide\ndue before someday\npriority is urgent\ncolumn [/] | limit 0");
     expect(q.errors.map((e) => e.line)).toEqual([1, 2, 4, 5, 6, 7, 8]);
     expect(q.errors[0].message).toContain("did you mean “column”?");
-    expect(q.columns.map((c) => c.status.symbol)).toEqual(["x"]);
+    expect(q.columns.map((c) => c.status!.symbol)).toEqual(["x"]);
   });
 });
 

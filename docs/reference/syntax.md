@@ -34,12 +34,16 @@ width 240px
 
 | Instruction | Rôle | Sans elle |
 | --- | --- | --- |
-| `column [c] Libellé` | Une colonne pour le statut de coche `c`, voir les [statuts](task-format.md#statuts). `column question` vaut `column [?]`. Libellé facultatif : le nom du statut | `[ ]`, `[<]`, `[/]`, `[x]`, le cycle de [configurer Tasks](../how-to/tasks.md) |
+| `column [c] Libellé` | Une colonne pour le statut de coche `c`, voir les [statuts](task-format.md#statuts). `column question` vaut `column [?]`. Libellé facultatif : le nom du statut. Sur un [tableau de notes](#tableau-de-notes), `column "valeur" Libellé` | `[ ]`, `[<]`, `[/]`, `[x]`, le cycle de [configurer Tasks](../how-to/tasks.md) |
 | `… \| sort by … \| limit n` | Tri et nombre de cartes propres à cette colonne | ceux du tableau, sans limite ; 50 cartes dessinées par cellule, puis **Afficher 50 de plus** |
+| `… \| color c` | Fond de la colonne teinté de la couleur `c` du thème : `red`, `orange`, `yellow`, `green`, `cyan`, `blue`, `purple`, `pink` (`colour` accepté). Une autre valeur est une erreur | fond neutre |
+| `… \| size s` | Taille des cartes de cette colonne, voir [tailles de carte](#tailles-de-carte) | celle du tableau |
+| `size small` · `medium` · `large` | Taille des cartes du tableau ; `short` vaut `small` | `medium` |
+| `cards notes` + `columns by p` | Une carte par note, rangée selon la valeur de sa propriété `p`, voir [tableau de notes](#tableau-de-notes). `cards tasks` revient au défaut | une carte par tâche |
 | `sort by a, b reverse` | Ordre des cartes : `priority` (la plus haute d'abord), `due`, `scheduled`, `start`, `created`, `done`, `cancelled` (la plus proche d'abord), `path`, `file order`, ou un champ (`client`). Sans valeur, en dernier | `priority, due, file order` |
 | `group by x` | Une rangée par valeur de `x` : un champ (`owner`, `client`…), `priority`, `note` ou `heading`. Changeable dans la barre d'outils | aucun groupe |
 | `show a, b` · `hide a, b` | Éléments des cartes, voir [ce qu'affiche une carte](#ce-quaffiche-une-carte) | `priority, due, subtasks, owner, path` |
-| `width 200px` | Largeur minimale d'une colonne | `240px` |
+| `width 200px` | Largeur minimale d'une colonne ; largeur exacte d'une colonne seule, qui ne s'étire pas | `240px` |
 | `path root dossier` | Dossier à partir duquel le chemin des notes est affiché, voir [le chemin affiché](#le-chemin-affiché). Un ou plusieurs segments (`Clients/ACME`), `/` au début ou à la fin indifférent. Sans dossier : erreur. Si plusieurs lignes, la dernière l'emporte. Ce n'est pas un filtre | chemin dans le vault |
 | Un filtre | Ne garder que les tâches qui le vérifient. Plusieurs lignes : toutes doivent l'être | tout le vault |
 
@@ -94,6 +98,28 @@ autre chose (`path includes A/ OR owner is Alice`) oblige à lire toutes les not
 Un champ hérité de la tâche parente ou de la note s'affiche en italique et dit sa source au
 survol.
 
+### Tailles de carte
+
+`size` règle tout le tableau, `| size` une colonne, qui l'emporte.
+
+| Taille | La carte montre |
+| --- | --- |
+| `small` (ou `short`) | une ligne : coche, titre tronqué, priorité, `⋯` |
+| `medium` | la carte décrite ci-dessus |
+| `large` | la même, plus la liste de ses sous-tâches, chacune avec sa coche ; sur un tableau de notes, les tâches de la note |
+
+```dot-kanban
+column [ ] À faire | size small
+column [/] En cours | size large | color blue
+column [x] Fait | size small | color green
+```
+
+### Largeur des colonnes
+
+Les colonnes se partagent la largeur du tableau, chacune au moins `width`. **Une colonne
+seule** ne s'étire pas : elle mesure `width`, ce qui convient aux listes comme « Décisions
+attendues » ou « Points d'attention ».
+
 ### Le chemin affiché
 
 Sans `path root`, une carte affiche le chemin de sa note dans le vault. Avec
@@ -120,6 +146,41 @@ milieu, la carte n'affiche que ce qui le suit :
   portent toujours sur le chemin dans le vault, deux notes de même chemin raccourci restent
   deux groupes `note`, et les notifications (note introuvable) donnent le chemin complet.
 
+## Tableau de notes
+
+`cards notes` fait **une carte par note** au lieu d'une carte par tâche. `columns by p`
+nomme la propriété dont la valeur donne la colonne ; chaque `column` nomme une valeur,
+entre guillemets si elle contient une espace :
+
+````markdown
+```dot-kanban
+cards notes
+columns by statut
+column "en cours" Maintenant | color blue
+column "à faire" Ensuite
+column livré Livré | color green | size small
+path includes Chantiers/
+show theme, cible
+```
+````
+
+| | Règle |
+| --- | --- |
+| Notes lues | toutes celles que les filtres de chemin laissent passer, avec ou sans tâches ; les propriétés viennent du cache d'Obsidian, seules les notes à tâches sont lues |
+| Colonne | la valeur de la propriété, comparée sans casse ni accents ; pour une liste, la première valeur qui a une colonne |
+| Titre | le nom de la note, sans `.md` ; une icône de page remplace la coche |
+| Champs | les propriétés de la note (`show theme`), filtrables (`theme is IA`) et groupables (`group by theme`) |
+| Priorité, dates | propriétés `priority: high`, `due: 2026-11-30` (et les autres dates), lues comme sur une tâche |
+| `subtasks` | tâches de la note sans tâche au-dessus d'elles, cochées / total, annulées non comptées |
+| Écartées | une note sans la propriété, ou dont la valeur n'a pas de colonne, avec sa raison |
+
+Glisser une carte vers une autre colonne **écrit la propriété dans les propriétés de la
+note** (`statut: livré`), avec la casse qu'elle y avait ; vers un autre groupe, la valeur du
+groupe (`theme`). **Annuler** remet la valeur d'avant, si elle n'a pas changé depuis. Le menu
+d'une carte de note propose **Déplacer vers…** et **Ouvrir la note à côté** ; pas de
+priorité, d'échéance ni de bandes de priorité. Sans `columns by`, ou sans colonne, le bloc
+signale l'erreur.
+
 ## La barre d'outils
 
 Recherche (titre et chemin affiché, sans casse ni accents), puce **owner** (une personne), puce
@@ -136,6 +197,7 @@ la note est ouverte.
 | --- | --- |
 | Glisser vers une autre colonne | Coche de la colonne, avec dates ✅ / ❌, voir [statuts](task-format.md#statuts) |
 | Glisser vers un autre groupe | Valeur du groupe écrite sur la ligne (`[owner:: Bob]`, emoji de priorité), à la place de celle quittée. Pas pour les groupes `note` et `heading` |
+| Glisser une carte de note | La propriété `columns by` (ou celle du groupe) écrite dans les propriétés de la note, voir [tableau de notes](#tableau-de-notes) |
 | Glisser vers le haut ou le bas | Dans une colonne triée d'abord par `priority` (le défaut), une bande par priorité apparaît pendant le glisser : 🔺 la plus haute … aucune … ⏬ la plus basse. Déposer dans une bande écrit sa priorité ; l'emplacement l'annonce quand elle change. Se combine avec un changement de colonne ou de groupe. Ailleurs, et dans sa propre bande, rien : l'ordre est calculé |
 | Clic sur la coche | `[x]` et ✅, ou `[ ]` depuis `[x]` |
 | Clic droit, ou `⋯` | Déplacer vers…, priorité, échéance (aujourd'hui, demain, dans une semaine, retirer), éditer avec Tasks, **Ouvrir la note à côté** (dans un onglet à côté du tableau, le même à chaque fois tant qu'il reste ouvert) |

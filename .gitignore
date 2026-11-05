@@ -2,3 +2,4 @@
 /main.js
 *.log
 /dist/
+/tmp/

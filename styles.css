@@ -708,3 +708,103 @@ body.dot-kanban-checkboxes input.task-list-item-checkbox[data-task="/"]:checked:
 .markdown-source-view.mod-cm6 .cm-embed-block.dot-kanban-embed > .edit-block-button {
     display: none !important;
 }
+
+/* A lone column keeps its width (`width`): it does not stretch across the page. */
+
+.dot-kanban-board.is-single,
+.dot-kanban-board.is-single .dot-kanban-lane-headers,
+.dot-kanban-board.is-single .dot-kanban-lane-row {
+    grid-template-columns: minmax(0, var(--dot-kanban-column-width));
+}
+
+.dot-kanban-board.is-single.is-grouped {
+    min-width: 0;
+}
+
+/* Column colors (`column … | color blue`): the panel is tinted with the theme's color. */
+
+.dot-kanban [data-color="red"] { --dot-kanban-tint: var(--color-red); }
+.dot-kanban [data-color="orange"] { --dot-kanban-tint: var(--color-orange); }
+.dot-kanban [data-color="yellow"] { --dot-kanban-tint: var(--color-yellow); }
+.dot-kanban [data-color="green"] { --dot-kanban-tint: var(--color-green); }
+.dot-kanban [data-color="cyan"] { --dot-kanban-tint: var(--color-cyan); }
+.dot-kanban [data-color="blue"] { --dot-kanban-tint: var(--color-blue); }
+.dot-kanban [data-color="purple"] { --dot-kanban-tint: var(--color-purple); }
+.dot-kanban [data-color="pink"] { --dot-kanban-tint: var(--color-pink); }
+
+.dot-kanban-column[data-color],
+.dot-kanban-column-head.is-standalone[data-color],
+.dot-kanban-lane-row > .dot-kanban-cell[data-color] {
+    background: color-mix(in srgb, var(--dot-kanban-tint) 14%, var(--background-secondary));
+}
+
+.dot-kanban-column[data-color] .dot-kanban-column-label,
+.dot-kanban-column-head[data-color] .dot-kanban-column-label {
+    color: color-mix(in srgb, var(--dot-kanban-tint) 55%, var(--text-normal));
+}
+
+/* Card sizes (`size small | medium | large`) */
+
+.dot-kanban-card[data-size="small"] {
+    padding: var(--size-4-1) var(--size-4-2);
+    gap: 0;
+}
+
+.dot-kanban-card[data-size="small"] .dot-kanban-card-title {
+    font-size: var(--font-ui-small);
+    overflow-wrap: normal;
+}
+
+.dot-kanban-card[data-size="small"] .dot-kanban-card-title p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dot-kanban-card-children {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0 0 24px;
+    border-top: 1px solid var(--background-modifier-border);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+}
+
+.dot-kanban-card-child {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.dot-kanban-card-child .dot-kanban-status svg {
+    width: 12px;
+    height: 12px;
+    margin-top: 2px;
+}
+
+.dot-kanban-card-child-title p {
+    margin: 0;
+}
+
+.dot-kanban-card-child[data-status="done"] .dot-kanban-card-child-title,
+.dot-kanban-card-child[data-status="canceled"] .dot-kanban-card-child-title {
+    text-decoration: line-through;
+    color: var(--text-faint);
+}
+
+/* Note cards (`cards notes`): a page icon in place of the checkbox. */
+
+.dot-kanban-note-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    padding-top: 2px;
+    color: var(--text-muted);
+}
+
+.dot-kanban-note-icon svg {
+    width: 16px;
+    height: 16px;
+}

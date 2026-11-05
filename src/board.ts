@@ -18,6 +18,8 @@ export type Reason =
   | { kind: "noColumn"; status: Status }
   | { kind: "unknown"; symbol: string }
   | { kind: "limit"; limit: number }
+  | { kind: "noValue"; key: string }
+  | { kind: "noValueColumn"; key: string; value: string }
   | { kind: "toolbar" };
 
 export interface Hidden {
@@ -142,9 +144,17 @@ export function layoutBoard(tasks: readonly Task[], query: Query, toolbar: Toolb
   const columns = query.columns.map((def) => ({ def, cards: [] as Task[] }));
   const passesToolbar = toolbarTest(toolbar, query.pathRoot);
 
+  const by = query.cards === "notes" ? query.columnsBy : null;
   for (const task of scope) {
     if (!passesToolbar(task)) hidden.push({ task, reason: { kind: "toolbar" } });
-    else if (!task.status) hidden.push({ task, reason: { kind: "unknown", symbol: task.info.symbol } });
+    else if (by) {
+      // A note goes in the column of its property's value; a list, in the first that has one.
+      const values = fieldValues(task, by).map((v) => fold(valueText(v)));
+      const column = columns.find((c) => c.def.value !== null && values.includes(fold(c.def.value)));
+      if (column) column.cards.push(task);
+      else if (!values.length) hidden.push({ task, reason: { kind: "noValue", key: by } });
+      else hidden.push({ task, reason: { kind: "noValueColumn", key: by, value: valueText(fieldValues(task, by)[0]) } });
+    } else if (!task.status) hidden.push({ task, reason: { kind: "unknown", symbol: task.info.symbol } });
     else {
       const column = columns.find((c) => c.def.status === task.status);
       if (column) column.cards.push(task);
@@ -165,7 +175,7 @@ export function layoutBoard(tasks: readonly Task[], query: Query, toolbar: Toolb
   return {
     columns,
     lanes: toolbar.groupBy ? layoutLanes(columns, toolbar.groupBy, query.pathRoot) : null,
-    lanesEditable: toolbar.groupBy !== "note" && toolbar.groupBy !== "heading",
+    lanesEditable: toolbar.groupBy !== "note" && toolbar.groupBy !== "heading" && !(by && toolbar.groupBy === "priority"),
     shown: columns.reduce((n, c) => n + c.cards.length, 0),
     hidden,
     people: [...people.values()].sort((a, b) => a.localeCompare(b)),
@@ -183,8 +193,14 @@ export function laneEdit(task: Task, groupBy: string, from: string | null, to: s
     const level = PRIORITIES.find((p) => p.name === to)?.level ?? NO_PRIORITY;
     return (line) => setPriority(line, level);
   }
-  const same = (a: string, b: string) => fold(valueText(a)) === fold(valueText(b));
-  const values = fieldValues(task, groupBy).filter((v) => from === null || !same(v, from));
-  if (to !== null && !values.some((v) => same(v, to))) values.push(to);
+  const values = laneValues(task, groupBy, from, to);
   return (line) => setField(line, groupBy, values);
+}
+
+/** The values of field `key` once the card moved from lane `from` to lane `to`. */
+export function laneValues(task: Task, key: string, from: string | null, to: string | null): string[] {
+  const same = (a: string, b: string) => fold(valueText(a)) === fold(valueText(b));
+  const values = fieldValues(task, key).filter((v) => from === null || !same(v, from));
+  if (to !== null && !values.some((v) => same(v, to))) values.push(to);
+  return values;
 }
