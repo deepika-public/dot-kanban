@@ -16,4 +16,5 @@ Le module Tasks a sa propre [documentation](https://publish.obsidian.md/tasks/) 
 plugin en reprend est dans le [format des tâches](reference/task-format.md).
 
 Règles de cette documentation : un sujet vit dans un seul fichier ; aucun numéro de version
-ni lien figé en dehors de [compatibilité](reference/compatibility.md).
+ni lien figé en dehors de [compatibilité](reference/compatibility.md) et du
+[CHANGELOG](../CHANGELOG.md).

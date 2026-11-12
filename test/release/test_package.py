@@ -11,7 +11,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [".gitignore", "package.json", "package-lock.json", "manifest.json", "main.js", "styles.css", "README.md",
-           "docs", "scripts/package.py"]
+           "CHANGELOG.md", "docs", "scripts/package.py", "scripts/release-notes.py"]
 VERSION = json.loads((ROOT / "manifest.json").read_text())["version"]
 ARCHIVE = f"dot-kanban-{VERSION}.zip"
 
@@ -53,7 +53,8 @@ class Packaging(unittest.TestCase):
             info = json.loads(zipped.read("dot-kanban/BUILD.json"))
             manifest = json.loads(zipped.read("dot-kanban/manifest.json"))
         docs = {f"dot-kanban/{p.relative_to(self.dir)}" for p in (self.dir / "docs").rglob("*") if p.suffix in (".md", ".json")}
-        expected = {f"dot-kanban/{n}" for n in ["main.js", "manifest.json", "styles.css", "README.md", "BUILD.json"]}
+        expected = {f"dot-kanban/{n}" for n in ["main.js", "manifest.json", "styles.css", "README.md", "CHANGELOG.md",
+                                                 "BUILD.json"]}
         self.assertEqual(names, expected | docs)
         self.assertTrue(docs, "the documentation is shipped")
         self.assertEqual(manifest["id"], "dot-kanban")
@@ -84,6 +85,22 @@ class Packaging(unittest.TestCase):
         self.assertEqual(self.package().returncode, 0)
         with zipfile.ZipFile(self.dir / "dist" / ARCHIVE) as zipped:
             self.assertTrue(json.loads(zipped.read("dot-kanban/BUILD.json"))["dirty"])
+
+    def test_the_release_text_is_the_changelog_section_of_the_version(self):
+        self.assertEqual(self.package().returncode, 0)
+        notes = (self.dir / "dist" / "RELEASE_NOTES.md").read_text(encoding="utf-8")
+        self.assertTrue(notes.strip())
+        self.assertNotIn(f"## [{VERSION}]", notes, "the heading is the release's title, not its text")
+        self.assertNotRegex(notes, r"^## ", "only this version's section")
+        self.assertNotRegex(notes, r"\]\((?!https?://)", "relative links would break on the release page")
+
+    def test_a_version_without_a_changelog_section_is_not_packaged(self):
+        changelog = self.dir / "CHANGELOG.md"
+        changelog.write_text(changelog.read_text(encoding="utf-8").replace(f"## [{VERSION}]", "## [99.0.0]"),
+                             encoding="utf-8")
+        result = self.package()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(f"pas de section pour {VERSION}", result.stderr)
 
     def test_versions_must_agree(self):
         manifest = json.loads((self.dir / "manifest.json").read_text())

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Package the already built plugin using the standard ZIP format; no upload."""
+"""Package the already built plugin using the standard ZIP format, and write the release
+text (dist/RELEASE_NOTES.md) from CHANGELOG.md; no upload."""
 import hashlib
 import json
 import os
@@ -30,7 +31,11 @@ if os.environ.get("CI_COMMIT_TAG") and info["dirty"]:
     raise SystemExit("Refusing to package a modified release checkout")
 epoch = int(os.environ.get("SOURCE_DATE_EPOCH") or subprocess.check_output(["git", "show", "-s", "--format=%ct", "HEAD"], text=True))
 date = time.gmtime(max(epoch, 315532800))[:6]
-files = [ROOT / name for name in ["main.js", "manifest.json", "styles.css", "README.md"]]
+# The release text: the version's CHANGELOG.md section, required before anything is built.
+notes = subprocess.run(["python3", "scripts/release-notes.py", version], capture_output=True, text=True)
+if notes.returncode:
+    raise SystemExit(notes.stderr.strip() or "No release notes for this version")
+files = [ROOT / name for name in ["main.js", "manifest.json", "styles.css", "README.md", "CHANGELOG.md"]]
 files += sorted(p for p in (ROOT / "docs").rglob("*") if p.suffix in (".md", ".json"))
 out = ROOT / "dist"
 out.mkdir(exist_ok=True)
@@ -43,5 +48,6 @@ with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zipped:
         entry.compress_type = zipfile.ZIP_DEFLATED
         entry.external_attr = 0o100644 << 16
         zipped.writestr(entry, data)
+(out / "RELEASE_NOTES.md").write_text(notes.stdout, encoding="utf-8")
 (out / "SHA256SUMS").write_text(f"{hashlib.sha256(archive.read_bytes()).hexdigest()}  {archive.name}\n")
 print(archive)
