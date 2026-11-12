@@ -27,14 +27,35 @@ Sur une branche ou une merge request, le pipeline vérifie la documentation, con
 lance les tests unitaires et les contrôles de distribution, puis empaquette. Sur un tag, il
 publie en plus.
 
+## Le CHANGELOG
+
+[`CHANGELOG.md`](../../CHANGELOG.md), à la racine, suit
+[Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) : une section par version, des
+rubriques **Ajouté**, **Modifié**, **Corrigé**, **Supprimé**, écrites pour qui utilise le
+plugin, pas pour qui lit le code. Chaque merge request qui change ce que voit
+l'utilisateur ajoute sa ligne sous `## [Non publié]`.
+
+La section de la version est le texte des releases : le job `package` l'écrit dans
+`dist/RELEASE_NOTES.md` (`scripts/release-notes.py`, liens relatifs rendus absolus), que
+reprennent la release GitLab et le workflow GitHub. Sans section, ou avec une section
+vide, le packaging échoue : une version ne part pas sans dire ce qui change.
+
+```bash
+python3 scripts/release-notes.py          # texte de la version du manifest
+python3 scripts/release-notes.py X.Y.Z    # d'une autre version
+```
+
 ## Publier
 
 1. Sur une branche : passer la version dans `package.json`, `package-lock.json` et
    `manifest.json` (le build refuse une divergence) ; garder l'identifiant
    `dot-kanban` ; relever `minAppVersion` si les API utilisées l'exigent, et ajouter la
-   paire version → `minAppVersion` dans `versions.json` ; ajouter
-   l'entrée de version dans [compatibilité](../reference/compatibility.md), et y mettre à
-   jour la version de Tasks testée si elle a changé dans `scripts/obsidian.mjs`.
+   paire version → `minAppVersion` dans `versions.json`. Dans le CHANGELOG, renommer
+   `## [Non publié]` en `## [X.Y.Z] - AAAA-MM-JJ`, remettre un `## [Non publié]` vide
+   au-dessus et mettre à jour les liens du bas (`[Non publié]` compare depuis `X.Y.Z`,
+   nouveau lien `[X.Y.Z]`). Dans [compatibilité](../reference/compatibility.md), mettre à
+   jour la version de Tasks testée si elle a changé dans `scripts/obsidian.mjs`, et les
+   exigences si elles ont changé.
 2. Lancer `npm run test:desktop` en local (la CI n'a pas d'affichage) et faire les essais
    à la main de [tester](test.md).
 3. Merge request, pipeline vert, fusion. **Attendre que le pipeline de `main` soit vert**
@@ -50,10 +71,10 @@ publie en plus.
 5. Attendre le job `release`, puis vérifier sur la
    [page des releases](https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases)
    la présence de `dot-kanban-X.Y.Z.zip` et de `SHA256SUMS` (« Source code »
-   n'est pas le plugin). Télécharger et refaire [l'installation](install.md) sur un vault
+   n'est pas le plugin), et le texte de la section du CHANGELOG. Télécharger et refaire [l'installation](install.md) sur un vault
    neuf : `sha256sum -c`, version dans le manifest, `BUILD.json` avec le bon commit.
 6. Vérifier sur [GitHub](https://github.com/deepika-public/dot-kanban/releases) la release
-   `X.Y.Z` et ses trois fichiers : le catalogue Obsidian la proposera sous quelques heures.
+   `X.Y.Z`, ses trois fichiers et le même texte : le catalogue Obsidian la proposera sous quelques heures.
 
 ## Catalogue Obsidian, la première fois
 
@@ -73,8 +94,8 @@ npm ci && npm test && npm run package
 (cd dist && sha256sum -c SHA256SUMS)
 ```
 
-Le ZIP contient, sous `dot-kanban/`, `main.js`, `manifest.json`, `styles.css`, la
-documentation et `BUILD.json` (commit, version, arbre propre ou non). Ni `node_modules`, ni
+Le ZIP contient, sous `dot-kanban/`, `main.js`, `manifest.json`, `styles.css`, le README,
+le CHANGELOG, la documentation et `BUILD.json` (commit, version, arbre propre ou non). Ni `node_modules`, ni
 sources. Il faut un dépôt Git avec au moins un commit : `BUILD.json` nomme le commit, et sa
 date fixe celle des fichiers de l'archive, ce qui la rend reproductible.
 

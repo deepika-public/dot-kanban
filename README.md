@@ -91,4 +91,5 @@ décrivent le reste.
 
 [Index](docs/README.md) · [Dépanner](docs/how-to/troubleshoot.md) ·
 [Architecture](docs/explanation/architecture.md) · [Tester](docs/how-to/test.md) ·
-[Publier une release](docs/how-to/release.md) · [Spécification](docs/spec.md).
+[Publier une release](docs/how-to/release.md) · [Spécification](docs/spec.md) ·
+[Changelog](CHANGELOG.md).

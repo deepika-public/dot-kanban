@@ -89,10 +89,11 @@ n'affirme rien : c'est vous qui observez.
 ## Contrôles de distribution
 
 `test/release/test_package.py` empaquette une copie jetable du dépôt, dans son propre
-dépôt Git, et vérifie : contenu exact du ZIP (plugin, documentation, `BUILD.json` au bon
-commit), somme `SHA256SUMS`, archive identique octet pour octet d'un passage à l'autre,
-refus d'un tag qui ne nomme pas la version, d'une release depuis un checkout modifié et de
-versions divergentes. Il a besoin de `main.js` : lancer `npm run build` avant.
+dépôt Git, et vérifie : contenu exact du ZIP (plugin, CHANGELOG, documentation,
+`BUILD.json` au bon commit), somme `SHA256SUMS`, archive identique octet pour octet d'un
+passage à l'autre, texte de release réduit à la section de la version et sans lien
+relatif, refus d'une version sans section dans le CHANGELOG, d'un tag qui ne nomme pas la
+version, d'une release depuis un checkout modifié et de versions divergentes. Il a besoin de `main.js` : lancer `npm run build` avant.
 
 ## À la main, avant une release
 

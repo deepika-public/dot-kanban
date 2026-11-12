@@ -55,13 +55,13 @@ Tasks : [configurer Tasks](tasks.md) pour qu'il connaisse les neuf statuts.
 
 Obsidian fermé, refaire l'installation depuis la release : l'archive se décompresse
 par-dessus. Le plugin n'écrit aucun fichier à lui dans le vault. Les changements de chaque
-version sont dans le journal de [compatibilité](../reference/compatibility.md).
+version sont dans le [CHANGELOG](../../CHANGELOG.md).
 
 Ensuite : [un premier tableau](../tutorials/first-board.md).
 
 ## Depuis Tasks in Kanban
 
-Avant son renommage (voir [compatibilité](../reference/compatibility.md)), le plugin s'appelait **Tasks in Kanban** (identifiant
+Avant son renommage (voir le [CHANGELOG](../../CHANGELOG.md)), le plugin s'appelait **Tasks in Kanban** (identifiant
 `tasks-in-kanban`, bloc ` ```tik `). Obsidian y voit un autre plugin :
 
 1. Installer dot-kanban, comme ci-dessus.
