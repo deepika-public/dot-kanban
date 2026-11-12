@@ -10,8 +10,8 @@ import unittest
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCES = [".gitignore", "package.json", "package-lock.json", "manifest.json", "main.js", "styles.css", "README.md",
-           "CHANGELOG.md", "docs", "scripts/package.py", "scripts/release-notes.py"]
+SOURCES = [".gitignore", "package.json", "package-lock.json", "manifest.json", "versions.json", "main.js",
+           "styles.css", "README.md", "CHANGELOG.md", "docs", "scripts/package.py", "scripts/release-notes.py"]
 VERSION = json.loads((ROOT / "manifest.json").read_text())["version"]
 ARCHIVE = f"dot-kanban-{VERSION}.zip"
 
@@ -93,6 +93,10 @@ class Packaging(unittest.TestCase):
         self.assertNotIn(f"## [{VERSION}]", notes, "the heading is the release's title, not its text")
         self.assertNotRegex(notes, r"^## ", "only this version's section")
         self.assertNotRegex(notes, r"\]\((?!https?://)", "relative links would break on the release page")
+        minimum = json.loads((ROOT / "versions.json").read_text())[VERSION]
+        self.assertIn(f"Requiert Obsidian {minimum}", notes)
+        self.assertIn("CHANGELOG.md)", notes)
+        self.assertNotIn("SHA256SUMS", notes, "on GitLab the files are on the page itself")
 
     def test_a_version_without_a_changelog_section_is_not_packaged(self):
         changelog = self.dir / "CHANGELOG.md"
