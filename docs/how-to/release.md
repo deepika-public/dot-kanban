@@ -37,8 +37,23 @@ l'utilisateur ajoute sa ligne sous `## [Non publié]`.
 
 La section de la version est le texte des releases : le job `package` l'écrit dans
 `dist/RELEASE_NOTES.md` (`scripts/release-notes.py`, liens relatifs rendus absolus), que
-reprennent la release GitLab et le workflow GitHub. Sans section, ou avec une section
+reprennent la release GitLab et le workflow GitHub. Un pied de page y ajoute ce qui ne
+vaut que pour la release : version d'Obsidian requise (`versions.json`), lien vers la mise
+à jour, vers le CHANGELOG complet et vers les changements depuis la version précédente ;
+sur GitHub, où se trouvent le ZIP et `SHA256SUMS`. Sans section, ou avec une section
 vide, le packaging échoue : une version ne part pas sans dire ce qui change.
+
+Le CHANGELOG fait foi : le texte d'une release ne s'édite pas à la main. Sur GitHub, le
+workflow `.github/workflows/release-notes.yml` réécrit le texte de toutes les releases
+quand `main` change le CHANGELOG, `versions.json` ou le script (et à la demande, onglet
+**Actions**). Sur GitLab, la release prend son texte à sa création ; pour en corriger une
+existante :
+
+```bash
+python3 scripts/release-notes.py X.Y.Z > dist/notes.md
+glab api -X PUT "projects/deepika-public%2Fdeepika-obsidian-toolbox%2Fdot-kanban/releases/X.Y.Z" \
+  -F "description=@$PWD/dist/notes.md"
+```
 
 ```bash
 python3 scripts/release-notes.py          # texte de la version du manifest
@@ -84,8 +99,9 @@ le plugin (dépôt `deepika-public/dot-kanban`). Une revue automatique puis huma
 ses demandes de correction arrivent sur ce même site. Les versions suivantes ne demandent
 rien de plus que le tag.
 
-Le packaging refuse un tag divergent et un checkout modifié. Une release existante n'est
-jamais modifiée : en cas d'erreur, publier la version suivante.
+Le packaging refuse un tag divergent et un checkout modifié. Les fichiers d'une release
+existante ne sont jamais modifiés, seul son texte suit le CHANGELOG : en cas d'erreur dans
+le plugin, publier la version suivante.
 
 ## Construire le ZIP localement
 

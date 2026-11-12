@@ -28,8 +28,7 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          python3 scripts/release-notes.py "$TAG" > notes.md
-          printf '\n---\n\nZIP et `SHA256SUMS` : https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/%s\n' "$TAG" >> notes.md
+          python3 scripts/release-notes.py "$TAG" --github > notes.md
       - name: Attester la provenance des fichiers
         uses: actions/attest-build-provenance@v2
         with:
