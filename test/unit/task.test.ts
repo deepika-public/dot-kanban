@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dayLabel, dayOf, formatDay, localDay, parseDay, resolveDay } from "../../src/dates";
 import {
+  appendTask,
   checkboxOf,
   locateTask,
   normalizeTaskText,
@@ -12,6 +13,7 @@ import {
   setPriority,
   setStatus,
   splitValues,
+  taskLine,
   toggleUntilDone,
   taskBody,
   valueText,
@@ -131,6 +133,23 @@ describe("finding a task again", () => {
     expect(done.content).toBe("- [ ] a\r\n- [x] b ✅ 2026-10-01\r\n");
     expect(revertRewrite(done.content, done)).toBe(content);
     expect(revertRewrite("- [ ] a\r\n- [x] b edited\r\n", done)).toBeNull();
+  });
+
+  it("adds a task at the end of a note, keeping its last line break or its lack, and undoes it", () => {
+    for (const content of ["", "# Inbox", "# Inbox\n", "- [ ] a\r\n"]) {
+      const done = appendTask(content, ["- [ ] new"]);
+      expect(done.content.split(/\r?\n/)[done.line]).toBe("- [ ] new");
+      expect(done.content.endsWith("\n")).toBe(content.endsWith("\n"));
+      expect(revertRewrite(done.content, done)).toBe(content);
+    }
+    expect(appendTask("# Inbox", ["- [ ] new"]).content).toBe("# Inbox\n- [ ] new");
+  });
+
+  it("makes a task line of a description or of the line Tasks writes", () => {
+    expect(taskLine("Call Bob")).toBe("- [ ] Call Bob");
+    expect(taskLine("Call Bob", "<")).toBe("- [<] Call Bob");
+    expect(taskLine("- [ ] Call Bob 📅 2026-10-02\n")).toBe("- [ ] Call Bob 📅 2026-10-02");
+    expect(taskLine("  * [/] indented")).toBe("* [/] indented");
   });
 
   it("replaces a task by several lines, as Tasks does for a recurrence", () => {

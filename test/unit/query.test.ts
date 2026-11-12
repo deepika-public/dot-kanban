@@ -30,6 +30,14 @@ describe("the block", () => {
     expect(q.width).toBe("300px");
   });
 
+  it("reads the order of the lanes after group by", () => {
+    expect(parseQuery("group by statut").groupOrder).toEqual({ kind: "natural", values: [] });
+    expect(parseQuery("group by statut | order reverse").groupOrder).toEqual({ kind: "reverse", values: [] });
+    expect(parseQuery('group by statut | order "2 · ▶️ À faire", "a, b", c').groupOrder).toEqual({ kind: "custom", values: ["2 · ▶️ À faire", "a, b", "c"] });
+    const bad = parseQuery("group by statut | order\ngroup by statut | sort x");
+    expect(bad.errors.map((e) => e.line)).toEqual([1, 2]);
+  });
+
   it("reports what it does not understand, with the line and a suggestion, and keeps the rest", () => {
     const q = parseQuery("colum [x]\ncolumn [r]\ncolumn [x]\ncolumn [x]\nwidth wide\ndue before someday\npriority is urgent\ncolumn [/] | limit 0");
     expect(q.errors.map((e) => e.line)).toEqual([1, 2, 4, 5, 6, 7, 8]);

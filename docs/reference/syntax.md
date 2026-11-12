@@ -3,7 +3,7 @@
 Un tableau est un bloc de code de langage `dot-kanban`, dans n'importe quelle note, affiché en
 lecture et en aperçu en direct, sur toute la largeur du panneau (même avec la longueur de
 ligne lisible). Plusieurs blocs sont des tableaux indépendants. Le plugin
-n'a qu'un réglage global, le dessin des coches dans les notes ([format des tâches](task-format.md#statuts)) : tout le tableau se règle dans le bloc.
+a deux réglages globaux, le dessin des coches dans les notes ([format des tâches](task-format.md#statuts)) et la note où le bouton **Ajouter** écrit les nouvelles tâches ([la barre d'outils](#la-barre-doutils)) : tout le tableau se règle dans le bloc.
 
 Une instruction par ligne, à la manière des requêtes Tasks. Une ligne qui commence par `#`
 est un commentaire. Les `column` donnent l'ordre des colonnes ; les autres lignes sont en
@@ -42,6 +42,7 @@ width 240px
 | `cards notes` + `columns by p` | Une carte par note, rangée selon la valeur de sa propriété `p`, voir [tableau de notes](#tableau-de-notes). `cards tasks` revient au défaut | une carte par tâche |
 | `sort by a, b reverse` | Ordre des cartes : `priority` (la plus haute d'abord), `due`, `scheduled`, `start`, `created`, `done`, `cancelled` (la plus proche d'abord), `path`, `file order`, ou un champ (`client`). Sans valeur, en dernier | `priority, due, file order` |
 | `group by x` | Une rangée par valeur de `x` : un champ (`owner`, `client`…), `priority`, `note` ou `heading`. Changeable dans la barre d'outils | aucun groupe |
+| `group by x \| order …` | Ordre des rangées : `alphanumeric`, `reverse`, ou une liste de valeurs, voir [ordre des rangées](#ordre-des-rangées) | `alphanumeric` |
 | `show a, b` · `hide a, b` | Éléments des cartes, voir [ce qu'affiche une carte](#ce-quaffiche-une-carte) | `priority, due, subtasks, owner, path` |
 | `width 200px` | Largeur minimale d'une colonne ; largeur exacte d'une colonne seule, qui ne s'étire pas | `240px` |
 | `path root dossier` | Dossier à partir duquel le chemin des notes est affiché, voir [le chemin affiché](#le-chemin-affiché). Un ou plusieurs segments (`Clients/ACME`), `/` au début ou à la fin indifférent. Sans dossier : erreur. Si plusieurs lignes, la dernière l'emporte. Ce n'est pas un filtre | chemin dans le vault |
@@ -74,6 +75,32 @@ Une ligne qui ne porte que sur `path` ou `filename` (avec `not` et `OR` si besoi
 appliquée avant de lire les notes : celles qu'elle écarte ne sont jamais ouvertes. Sur un
 grand vault, `path includes Projets/` rend donc le tableau rapide ; une ligne qui mêle
 autre chose (`path includes A/ OR owner is Alice`) oblige à lire toutes les notes.
+
+## Ordre des rangées
+
+Les rangées de `group by` se rangent par défaut dans l'ordre **alphanumérique** de leur
+valeur : sans casse ni accents, et les nombres par leur valeur (`2` avant `10`) ; pour
+`priority`, de la plus haute à la plus basse. `| order` après `group by` impose un autre
+ordre :
+
+| Option | Ordre |
+| --- | --- |
+| `\| order alphanumeric` | celui par défaut, écrit pour être explicite |
+| `\| order reverse` | l'inverse : `10`, `2`, `1` ; pour `priority`, de la plus basse à la plus haute |
+| `\| order a, b, c` | les valeurs nommées d'abord, dans l'ordre écrit, puis les autres dans l'ordre alphanumérique. Valeur comparée sans casse ni accents ; entre guillemets si elle contient une virgule (`"a, b"`) |
+
+La rangée sans valeur (« Sans `x` ») reste toujours la dernière. L'ordre vaut pour le
+`group by` du bloc ; un autre groupement choisi dans la barre d'outils est en ordre
+alphanumérique.
+
+````markdown
+```dot-kanban
+cards notes
+columns by statut
+column "2 · ▶️ À faire" À faire
+group by priorite | order "1 · 🔥 Haute", "2 · Moyenne", "3 · Basse"
+```
+````
 
 ## Ce qu'affiche une carte
 
@@ -184,12 +211,25 @@ signale l'erreur.
 ## La barre d'outils
 
 Recherche (titre et chemin affiché, sans casse ni accents), puce **owner** (une personne), puce
-**Group by** (aucun, `owner`, `priority`, `note`, `heading`), puis le **résumé** :
+**Group by** (aucun, `owner`, `priority`, `note`, `heading`), bouton **Ajouter**, puis le **résumé** :
 nombre de cartes, filtres du bloc, et **écartées**, qui liste les tâches lues mais non
 montrées avec leur raison (coche sans colonne, coche inconnue, au-delà de `limit`, barre
 d'outils). **?** ouvre la légende des colonnes : coche, statut, ce qui est écrit en y
 entrant. **`</>`** passe la note en édition, curseur dans le bloc, pour le modifier. Les choix de la barre ne sont pas enregistrés dans la note ; ils restent tant que
 la note est ouverte.
+
+**Ajouter** crée une tâche et l'écrit **à la fin de la note choisie dans les réglages**
+(**Paramètres → dot-kanban → Note des nouvelles tâches**, `.md` facultatif), créée avec
+ses dossiers si elle n'existe pas. Avec Tasks, sa fenêtre de création
+s'ouvre : description, priorité, dates, statut, comme dans Tasks. Sans Tasks, une fenêtre
+demande la description ; la tâche prend la coche de la première colonne qui n'est ni
+`[x]` ni `[-]`. **Annuler** retire la ligne, si elle n'a pas changé depuis. Sans note
+choisie, une notification indique le réglage. La tâche n'apparaît sur le tableau que si
+ses filtres la laissent passer. Pas de bouton sur un [tableau de notes](#tableau-de-notes).
+
+Un tableau plus large que le panneau défile de côté par **deux barres**, au-dessus et
+au-dessous des colonnes, qui se suivent ; celle du haut n'apparaît que si le tableau
+déborde.
 
 ## Gestes
 

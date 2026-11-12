@@ -47,8 +47,12 @@ const ALPHA = [
   "",
 ].join("\n");
 
+const WIDE = ["```dot-kanban", "column [ ]", "column [/]", "column [?]", "column [x]", "path includes Projects/", "width 700px", "```", ""].join("\n");
+
 const files = {
   "Board.md": BOARD,
+  "Wide.md": WIDE,
+  "Narrow.md": ["```dot-kanban", "column [ ]", "path includes Projects/", "width 200px", "```", ""].join("\n"),
   "Lanes.md": LANES,
   "Projects/Alpha.md": ALPHA,
   "Projects/Windows.md": "- [ ] Crlf task [o:: Dana]\r\n- [ ] Other line\r\n",
@@ -292,6 +296,62 @@ try {
   await dev.eval(`app.workspace.getLeavesOfType('markdown').filter((l)=>l.view.file?.path!=='Board.md').forEach((l)=>l.detach()), true`);
   await openBoard();
   await until(() => dev.eval(`!!window.__k.board()`), 10000, "the board again");
+
+  // A wide board scrolls from a bar above it too; a narrow one shows none.
+  const topBar = (i = 0) =>
+    dev.eval(`(()=>{const b=window.__k.board(${i});const top=b.querySelector('.dot-kanban-scroll-top'),s=b.querySelector('.dot-kanban-scroller');
+      return {hidden:top.classList.contains('is-hidden'),width:top.firstElementChild.offsetWidth,scrollWidth:s.scrollWidth,left:s.scrollLeft,topLeft:top.scrollLeft}})()`);
+  const shownBoard = (file) =>
+    until(() => dev.eval(`app.workspace.getActiveFile()?.path==='${file}' && document.querySelectorAll('.markdown-reading-view .dot-kanban').length===1
+      && !!window.__k.board().querySelector('.dot-kanban-card')`), 10000, file);
+  await openBoard("Narrow.md");
+  await shownBoard("Narrow.md");
+  await sleep(300);
+  assert.equal((await topBar()).hidden, true, "no bar above a board that fits");
+  await openBoard("Wide.md");
+  await shownBoard("Wide.md");
+  await until(async () => !(await topBar()).hidden, 10000, "the bar above a wide board");
+  const wide = await topBar();
+  assert.equal(wide.width, wide.scrollWidth, "as wide as the board");
+  await dev.eval(`(()=>{window.__k.board().querySelector('.dot-kanban-scroll-top').scrollLeft=300;return true})()`);
+  await until(async () => (await topBar()).left === 300, 5000, "the board following the bar above");
+  await dev.eval(`(()=>{window.__k.board().querySelector('.dot-kanban-scroller').scrollLeft=120;return true})()`);
+  await until(async () => (await topBar()).topLeft === 120, 5000, "the bar above following the board");
+  console.log("PASS: a scroll bar above a wide board, following the one below.");
+
+  // Add: the note comes from the settings; Tasks' dialog when Tasks is on, a description otherwise.
+  await openBoard();
+  await until(() => dev.eval(`!!window.__k.board()?.querySelector('.dot-kanban-add')`), 10000, "the Add button");
+  // Turning Tasks on or off draws the note again: the button is looked for until it is there.
+  const clickAdd = () => until(() => dev.eval(`(()=>{const b=window.__k.board()?.querySelector('.dot-kanban-add');b?.click();return !!b})()`), 10000, "the Add button");
+  await clickAdd();
+  await until(async () => (await dev.eval(`window.__k.notices()`)).some((n) => n.includes("dot-kanban")), 5000, "the notice without a note");
+  await dev.eval(`(()=>{app.plugins.plugins['dot-kanban'].options.newTaskFile='Inbox/New';return true})()`);
+  await dev.eval(`app.plugins.enablePlugin('${TASKS_ID}').then(()=>true)`);
+  await until(() => dev.eval(`!!app.plugins.plugins['${TASKS_ID}']?.apiV1?.createTaskLineModal`), 10000, "Tasks' API");
+  await clickAdd();
+  await until(() => dev.eval(`document.querySelectorAll('.modal-container').length===1`), 5000, "Tasks' dialog");
+  await dev.eval(`(()=>{document.querySelector('.modal-container .modal-close-button').click();return true})()`);
+  await until(() => dev.eval(`document.querySelectorAll('.modal-container').length===0`), 5000, "the dialog closed");
+  await sleep(300);
+  assert.equal(await dev.eval(`!!app.vault.getAbstractFileByPath('Inbox/New.md')`), false, "nothing written when cancelled");
+  // What Tasks' dialog gives back is written as is, in a note and folder created for it.
+  // `apiV1` is a getter, a new object each time: the dialog's answer is given through it.
+  await dev.eval(`(()=>{const p=app.plugins.plugins['${TASKS_ID}'];const api=p.apiV1;
+    Object.defineProperty(p,'apiV1',{configurable:true,get:()=>({...api,createTaskLineModal:async()=>'- [ ] From Tasks 📅 2026-12-01'})});return true})()`);
+  await clickAdd();
+  await until(() => { try { return read("Inbox/New.md") === "- [ ] From Tasks 📅 2026-12-01"; } catch { return false; } }, 10000, "the task from Tasks");
+  await dev.eval(`app.plugins.disablePlugin('${TASKS_ID}').then(()=>true)`);
+  await clickAdd();
+  await until(() => dev.eval(`!!document.querySelector('.dot-kanban-new-task input')`), 5000, "the description dialog");
+  await dev.eval(`(()=>{const i=document.querySelector('.dot-kanban-new-task input');i.value='Typed task';i.dispatchEvent(new Event('input'));
+    document.querySelector('.dot-kanban-new-task button').click();return true})()`);
+  await until(() => read("Inbox/New.md") === "- [ ] From Tasks 📅 2026-12-01\n- [ ] Typed task", 10000, "the typed task at the end");
+  // The notice comes just after the write: Undo is the one of this task.
+  await until(async () => (await dev.eval(`window.__k.notices()`)).at(-1)?.includes("Typed task"), 5000, "the notice of the typed task");
+  await clickUndo();
+  await until(() => read("Inbox/New.md") === "- [ ] From Tasks 📅 2026-12-01", 10000, "Undo of an added task");
+  console.log("PASS: Add, with Tasks' dialog or a description, at the end of the note of the settings; Undo.");
 
   // Renaming a note keeps its cards writable.
   await dev.eval(`app.fileManager.renameFile(app.vault.getAbstractFileByPath('Projects/Windows.md'),'Projects/Renamed.md').then(()=>true)`);

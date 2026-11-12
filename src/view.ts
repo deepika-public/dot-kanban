@@ -22,14 +22,17 @@ import { dayLabel, localDay, type Day } from "./dates";
 import { CardDrag } from "./dnd";
 import { language, priorityName, t } from "./i18n";
 import { statusIcon } from "./icons";
-import { HiddenModal, LegendModal } from "./modals";
+import { HiddenModal, LegendModal, NewTaskModal } from "./modals";
 import { BUILT_IN_SHOW, inScope, parseQuery, shownPath, type CardSize, type ColumnDef, type Query } from "./query";
+import { newTaskPath, type Settings } from "./settings";
 import { statusOf, type Status } from "./statuses";
 import { tasksApi } from "./tasks-api";
 import {
+  appendTask,
   checkboxOf,
   fieldKey,
   locateTask,
+  parseLine,
   PRIORITIES,
   priorityByLevel,
   type Priority,
@@ -38,6 +41,7 @@ import {
   setDate,
   setPriority,
   setStatus,
+  taskLine,
   toggleUntilDone,
   valueText,
   OWNER,
@@ -78,6 +82,8 @@ type Undo =
 
 interface Shell {
   bar: HTMLElement;
+  /** The scroll bar above the board, twin of the scroller's own below it. */
+  topScroll: HTMLElement;
   legend: HTMLButtonElement;
   person: HTMLButtonElement;
   lanes: HTMLButtonElement;
@@ -147,6 +153,8 @@ export class TikBoard extends MarkdownRenderChild {
     private readonly index: TaskIndex,
     source: string,
     private readonly ctx: MarkdownPostProcessorContext,
+    /** The plugin's settings, the same object as they change. */
+    private readonly settings: Settings,
   ) {
     super(containerEl);
     this.query = parseQuery(source);
@@ -267,6 +275,17 @@ export class TikBoard extends MarkdownRenderChild {
     };
     const person = chip((e) => this.choosePerson(e));
     const lanes = chip((e) => this.chooseLanes(e));
+    // A new task goes to a note of its own, not to a board of notes.
+    if (!this.notesBoard) {
+      const add = bar.createEl("button", { cls: "dot-kanban-chip dot-kanban-add" });
+      setIcon(add.createSpan({ cls: "dot-kanban-add-icon" }), "plus");
+      add.createSpan({ text: t("add") });
+      add.onmouseenter = () => {
+        const path = newTaskPath(this.settings.newTaskFile);
+        add.setAttr("aria-label", path ? t("addLabel", { path }) : t("addNoFile"));
+      };
+      add.onclick = () => void this.addTask();
+    }
     bar.createDiv({ cls: "dot-kanban-spacer" });
     const summary = bar.createDiv({ cls: "dot-kanban-summary" });
     const edit = bar.createEl("button", { cls: "dot-kanban-icon-button", attr: { "aria-label": t("editSource") } });
@@ -276,9 +295,39 @@ export class TikBoard extends MarkdownRenderChild {
     setIcon(legend, "help-circle");
     legend.onclick = () => new LegendModal(this.app, this.query.columns, this.query.columnsBy).open();
 
+    const topScroll = root.createDiv({ cls: "dot-kanban-scroll-top is-hidden", attr: { "aria-hidden": "true" } });
+    topScroll.createDiv({ cls: "dot-kanban-scroll-top-width" });
     const scroller = root.createDiv({ cls: "dot-kanban-scroller" });
     const board = scroller.createDiv({ cls: "dot-kanban-board" });
-    return { bar, legend, person, lanes, summary, scroller, board };
+    this.twinScrollBars(topScroll, scroller);
+    return { bar, topScroll, legend, person, lanes, summary, scroller, board };
+  }
+
+  /**
+   * A wide board scrolls sideways from a bar above it as well as from the one below: the
+   * two bars follow each other. The bar above shows only when the board overflows.
+   */
+  private twinScrollBars(top: HTMLElement, scroller: HTMLElement) {
+    const follow = (from: HTMLElement, to: HTMLElement) => () => {
+      // Setting the same position fires no event: the two bars do not echo each other.
+      if (to.scrollLeft !== from.scrollLeft) to.scrollLeft = from.scrollLeft;
+    };
+    this.registerDomEvent(top, "scroll", follow(top, scroller), { passive: true });
+    this.registerDomEvent(scroller, "scroll", follow(scroller, top), { passive: true });
+    const observer = new ResizeObserver(() => this.fitTopScroll());
+    observer.observe(scroller);
+    this.register(() => observer.disconnect());
+  }
+
+  /** The bar above the board: as wide as what the board scrolls, hidden when nothing does. */
+  private fitTopScroll() {
+    const shell = this.shell;
+    if (!shell) return;
+    const { topScroll, scroller } = shell;
+    const overflows = scroller.scrollWidth > scroller.clientWidth + 1;
+    topScroll.toggleClass("is-hidden", !overflows);
+    (topScroll.firstElementChild as HTMLElement).style.width = `${scroller.scrollWidth}px`;
+    if (overflows) topScroll.scrollLeft = scroller.scrollLeft;
   }
 
   private choosePerson(e: MouseEvent) {
@@ -430,6 +479,7 @@ export class TikBoard extends MarkdownRenderChild {
     }
     shell.scroller.scrollLeft = left;
     this.followPageWidth();
+    this.fitTopScroll();
     if (hadFocus && this.focused) this.cardEl(this.focused)?.focus({ preventScroll: true });
     // A card lifted with the keyboard stays lifted when a note changes meanwhile.
     const liftedEl = lifted && this.cardEl(lifted.id);
@@ -966,6 +1016,39 @@ export class TikBoard extends MarkdownRenderChild {
   }
 
   /* ---------- writing ---------- */
+
+  /**
+   * « Add »: asks for a task, with the Tasks dialog when Tasks is there, and writes it at
+   * the end of the note of the settings, created if missing. Undone like any other write.
+   */
+  private async addTask() {
+    const path = newTaskPath(this.settings.newTaskFile);
+    if (!path) return void new Notice(t("addNeedsFile"), 10000);
+    const create = tasksApi(this.app)?.createTaskLineModal;
+    const text = create ? await create() : await new NewTaskModal(this.app, path).ask();
+    if (!text?.trim()) return;
+    // Without a checkbox, the task takes the first column that is not done nor cancelled.
+    const open = this.query.columns.find((c) => c.status && c.status.type !== "DONE" && c.status.type !== "CANCELLED");
+    const line = taskLine(text, open?.status?.symbol ?? " ");
+    this.cancelRefresh();
+    let rewrite: Rewrite;
+    const file = this.fileAt(path);
+    if (file) {
+      let done: Rewrite | null = null;
+      await this.app.vault.process(file, (data) => (done = appendTask(data, [line])).content);
+      rewrite = done!;
+    } else {
+      const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+      if (folder && !this.app.vault.getAbstractFileByPath(folder)) await this.app.vault.createFolder(folder);
+      rewrite = appendTask("", [line]);
+      await this.app.vault.create(path, rewrite.content);
+    }
+    this.pushUndo({ kind: "line", path, rewrite });
+    this.focused = `${path}:${rewrite.line}`;
+    // The new line shows once Obsidian has read the note again, as after an edit.
+    this.scheduleRefresh(REFRESH_DELAY);
+    this.notify(t("added", { title: parseLine(line)?.description || line, path }));
+  }
 
   /**
    * Rewrites the task in one atomic read-modify-write of its note, after finding it again

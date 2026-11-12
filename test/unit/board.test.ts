@@ -94,6 +94,22 @@ describe("lanes", () => {
     expect(board.lanes!.map((l) => l.value)).toEqual(["high", "none", "low"]);
   });
 
+  it("orders lanes alphanumerically, reversed, or as listed, no value last", () => {
+    const numbered = [
+      ...tasksOf("Sprints.md", ["- [ ] a [sprint:: 10]", "- [ ] b [sprint:: 2]", "- [ ] c [sprint:: Écart]", "- [ ] d [sprint:: 1]", "- [ ] e"].join("\n")),
+    ];
+    const lanes = (block: string, groupBy = "sprint") =>
+      layoutBoard(numbered, parseQuery(`column [ ]\n${block}`), { ...none, groupBy }, today).lanes!.map((l) => l.value);
+    expect(lanes("group by sprint")).toEqual(["1", "2", "10", "Écart", null]);
+    expect(lanes("group by sprint | order alphanumeric")).toEqual(["1", "2", "10", "Écart", null]);
+    expect(lanes("group by sprint | order reverse")).toEqual(["Écart", "10", "2", "1", null]);
+    expect(lanes('group by sprint | order "ecart", 10')).toEqual(["Écart", "10", "1", "2", null]);
+    // Another grouping chosen in the toolbar keeps the natural order.
+    expect(lanes("group by sprint | order reverse", "owner")).toEqual([null]);
+    const byPriority = layoutBoard(tasks, parseQuery("column [ ]\ngroup by priority | order reverse"), { ...none, groupBy: "priority" }, today);
+    expect(byPriority.lanes!.map((l) => l.value)).toEqual(["low", "none", "high"]);
+  });
+
   it("writes the lane's value in place of the one the card left", () => {
     const doing = tasks.find((t) => t.info.description === "Doing")!;
     expect(laneEdit(doing, "owner", "Alice", "[[Carol]]")!("- [/] Doing [o:: Alice, Bob]")).toBe("- [/] Doing [owner:: Bob, [[Carol]]]");

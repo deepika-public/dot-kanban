@@ -6,6 +6,8 @@ export interface TasksApi {
   executeToggleTaskDoneCommand?: (line: string, path: string) => string;
   /** Tasks 7.21+: the edit dialog, pre-filled; "" when cancelled. */
   editTaskLineModal?: (line: string) => Promise<string>;
+  /** Tasks 3.x+: the dialog for a new task; its line (`- [ ] …`), "" when cancelled. */
+  createTaskLineModal?: () => Promise<string>;
 }
 
 export function tasksApi(app: App): TasksApi | null {

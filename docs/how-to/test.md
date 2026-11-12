@@ -27,8 +27,8 @@ C'est ce que lance la CI.
   les filtres de chemin ; `path root` et le chemin affiché (début, milieu, plusieurs
   segments, hors racine, NFC/NFD, dossier manquant) ;
 - **tableau** (`board.test.ts`) : tris et limites par colonne, tâches écartées et leur
-  raison, barre d'outils sans casse ni accents, groupes, écriture d'un changement de
-  groupe ; recherche et groupes `note` sur le chemin affiché par `path root`.
+  raison, barre d'outils sans casse ni accents, groupes et leur ordre (alphanumérique,
+  inverse, imposé), écriture d'un changement de groupe ; recherche et groupes `note` sur le chemin affiché par `path root`.
 
 `test/unit/fixtures.ts` fabrique ce que le cache d'Obsidian dirait d'une note à partir de
 son Markdown.
@@ -62,7 +62,10 @@ premier plan, et vérifie, en relisant les fichiers sur le disque après chaque 
 - une note modifiée hors d'Obsidian ; une modification dans l'éditeur suivie par le tableau
   avant l'enregistrement de la note ; un glisser dans une bande de priorité ; la recherche ;
   un clic qui ne fait que sélectionner, **Ouvrir la note à côté** curseur sur la tâche, puis
-  un clic qui y montre une autre tâche, `Ctrl`+clic qui réutilise le même onglet ; une note renommée dont les cartes restent modifiables.
+  un clic qui y montre une autre tâche, `Ctrl`+clic qui réutilise le même onglet ; la
+  barre de défilement au-dessus d'un tableau large, absente d'un tableau étroit ;
+  **Ajouter** sans note réglée, avec la fenêtre de Tasks (annulée, puis remplie), sans
+  Tasks, puis **Annuler** ; une note renommée dont les cartes restent modifiables.
 
 Tasks vient de `TASKS_DIR` (un dossier avec `main.js`, `manifest.json`, `styles.css`) si la
 variable est définie, sinon de sa release GitHub, téléchargée une fois dans

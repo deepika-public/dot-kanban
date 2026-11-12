@@ -1,7 +1,7 @@
 // Which cards a board shows, where, in what order, and which it leaves out and why. Pure.
 import { fieldValues, type Task } from "./collect";
 import type { Day } from "./dates";
-import { fold, shownPath, type ColumnDef, type Query, type SortKey } from "./query";
+import { fold, shownPath, type ColumnDef, type GroupOrder, type Query, type SortKey } from "./query";
 import type { Status } from "./statuses";
 import { DATE_KINDS, NO_PRIORITY, OWNER, PRIORITIES, priorityByLevel, setField, setPriority, valueText, type DateKind } from "./task";
 
@@ -103,7 +103,24 @@ function laneKeys(task: Task, groupBy: string, root: string | null): LaneKey[] {
   return fieldValues(task, groupBy).map((v) => ({ id: fold(valueText(v)), value: v, label: valueText(v), rank: 0 }));
 }
 
-function layoutLanes(columns: BoardModel["columns"], groupBy: string, root: string | null): Lane[] {
+/** Alphanumeric: `2` before `10`, case and accents aside. */
+const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+
+/** The lanes' order: see `GroupOrder`. The lane without value is always last. */
+function compareLanes(order: GroupOrder): (a: LaneKey, b: LaneKey) => number {
+  const listed = order.values.map((v) => fold(v));
+  const position = (lane: LaneKey) => {
+    const i = lane.value === null ? -1 : listed.indexOf(fold(lane.label));
+    return i < 0 ? listed.length : i;
+  };
+  return (a, b) => {
+    if (a.value === null || b.value === null) return a.value === null ? (b.value === null ? 0 : 1) : -1;
+    const diff = (order.kind === "custom" ? position(a) - position(b) : 0) || a.rank - b.rank || natural(a.label, b.label);
+    return order.kind === "reverse" ? -diff : diff;
+  };
+}
+
+function layoutLanes(columns: BoardModel["columns"], groupBy: string, root: string | null, order: GroupOrder): Lane[] {
   const lanes = new Map<string, LaneKey & { cells: Task[][]; tasks: Set<string> }>();
   const none: LaneKey = { id: "\u0000none", value: null, label: "", rank: Number.MAX_SAFE_INTEGER };
   columns.forEach((column, c) => {
@@ -121,11 +138,13 @@ function layoutLanes(columns: BoardModel["columns"], groupBy: string, root: stri
     }
   });
   return [...lanes.values()]
-    .sort((a, b) => a.rank - b.rank || a.label.localeCompare(b.label))
+    .sort(compareLanes(order))
     .map(({ value, label, cells, tasks }) => ({ value, label, cells, count: tasks.size }));
 }
 
 /* ---------- the board ---------- */
+
+const NATURAL: GroupOrder = { kind: "natural", values: [] };
 
 /** The toolbar's test, its texts folded once for every card. The search reads the path as shown. */
 function toolbarTest(toolbar: Toolbar, root: string | null): (task: Task) => boolean {
@@ -174,7 +193,10 @@ export function layoutBoard(tasks: readonly Task[], query: Query, toolbar: Toolb
 
   return {
     columns,
-    lanes: toolbar.groupBy ? layoutLanes(columns, toolbar.groupBy, query.pathRoot) : null,
+    // The block's order is for its own `group by`; another chosen in the toolbar is in natural order.
+    lanes: toolbar.groupBy
+      ? layoutLanes(columns, toolbar.groupBy, query.pathRoot, toolbar.groupBy === query.groupBy ? query.groupOrder : NATURAL)
+      : null,
     lanesEditable: toolbar.groupBy !== "note" && toolbar.groupBy !== "heading" && !(by && toolbar.groupBy === "priority"),
     shown: columns.reduce((n, c) => n + c.cards.length, 0),
     hidden,
