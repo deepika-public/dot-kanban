@@ -22,7 +22,7 @@ tableaux de montrer les mêmes tâches sans se contredire.
 | `src/dnd.ts` | Le glisser par Pointer Events | DOM seulement |
 | `src/icons.ts`, `src/modals.ts` | Icônes des statuts ; fenêtres de légende et des tâches écartées | Oui |
 | `src/tasks-api.ts` | L'API du module Tasks, s'il est là | Oui |
-| `src/settings.ts` | Le réglage du dessin des coches dans les notes : une classe sur `body`, que vise `styles.css` | Oui |
+| `src/settings.ts` | Les réglages : le dessin des coches dans les notes (une classe sur `body`, que vise `styles.css`) et la note des nouvelles tâches, avec suggestion des notes | Oui |
 | `src/main.ts` | Enregistre le bloc `dot-kanban`, la commande d'insertion et le réglage | Oui |
 
 Tout ce qui décide est pur et testé sans Obsidian (`test/unit`) ; ce qui touche Obsidian

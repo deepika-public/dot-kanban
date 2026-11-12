@@ -1,4 +1,4 @@
-// The two windows that explain a board: its columns, and the tasks it leaves out.
+// The windows of a board: its columns, the tasks it leaves out, and a new task without Tasks.
 import { Modal, setIcon, type App } from "obsidian";
 import type { Hidden, Reason } from "./board";
 import type { Task } from "./collect";
@@ -79,6 +79,48 @@ export class HiddenModal extends Modal {
   }
 
   onClose() {
+    this.contentEl.empty();
+  }
+}
+
+/** A new task's description, when Tasks is not there to ask for the whole task. Null when given up. */
+export class NewTaskModal extends Modal {
+  private resolve: ((text: string | null) => void) | null = null;
+
+  constructor(app: App, private readonly path: string) {
+    super(app);
+  }
+
+  /** Opens the window; resolves with the description once submitted, null if closed. */
+  ask(): Promise<string | null> {
+    return new Promise((resolve) => {
+      this.resolve = resolve;
+      this.open();
+    });
+  }
+
+  onOpen() {
+    this.titleEl.setText(t("newTask"));
+    const form = this.contentEl.createEl("form", { cls: "dot-kanban-new-task" });
+    const input = form.createEl("input", { type: "text", placeholder: t("newTaskPlaceholder"), attr: { "aria-label": t("newTask") } });
+    form.createDiv({ cls: "dot-kanban-muted", text: t("addLabel", { path: this.path }) });
+    const submit = form.createEl("button", { cls: "mod-cta", text: t("add"), attr: { type: "submit" } });
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      this.resolve?.(text);
+      this.resolve = null;
+      this.close();
+    };
+    submit.disabled = true;
+    input.oninput = () => (submit.disabled = !input.value.trim());
+    window.setTimeout(() => input.focus(), 0);
+  }
+
+  onClose() {
+    this.resolve?.(null);
+    this.resolve = null;
     this.contentEl.empty();
   }
 }

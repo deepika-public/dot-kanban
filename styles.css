@@ -118,6 +118,35 @@
     flex-grow: 1;
 }
 
+.dot-kanban .dot-kanban-add {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-4-1);
+}
+
+.dot-kanban-add-icon {
+    display: inline-flex;
+}
+
+.dot-kanban-add-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.dot-kanban-new-task {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.dot-kanban-new-task input {
+    width: 100%;
+}
+
+.dot-kanban-new-task button {
+    align-self: flex-end;
+}
+
 .dot-kanban-summary {
     color: var(--text-muted);
 }
@@ -134,6 +163,22 @@
 }
 
 /* Board: equal columns, equal heights */
+
+/* A scroll bar above a wide board, twin of the one below: an empty strip as wide as the board */
+
+.dot-kanban-scroll-top {
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-bottom: var(--size-4-1);
+}
+
+.dot-kanban-scroll-top.is-hidden {
+    display: none;
+}
+
+.dot-kanban-scroll-top-width {
+    height: 1px;
+}
 
 .dot-kanban-scroller {
     overflow-x: auto;

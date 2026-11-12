@@ -112,7 +112,7 @@ show due, owner, path
 | `note.<prop> is v`, `note.tags includes t` | Filtre sur une propriété ou les tags de la note | — |
 | `not …`, `… OR …` | Inverser, combiner | — |
 | `sort by` | `priority`, `due`, `scheduled`, `start`, `done`, `created`, `path`, `file order`, `<clé>` ; `reverse` | `priority, due, file order` |
-| `group by` | Groupes en rangées : `<clé>` (dont `owner`), `priority`, `note`, `heading` | aucun |
+| `group by` | Groupes en rangées : `<clé>` (dont `owner`), `priority`, `note`, `heading` ; `\| order reverse`, `\| order alphanumeric` ou `\| order v1, v2` pour l'ordre des rangées, la rangée sans valeur toujours dernière | aucun ; rangées en ordre alphanumérique, nombres par leur valeur |
 | `show` / `hide` | Éléments de la carte (§5) | §5 |
 | `width 200px` | Largeur minimale des colonnes ; le tableau prend toute la largeur du panneau, sauf une colonne seule, qui mesure `width` | `240px` |
 | `… \| color c` · `… \| size s` · `size s` | Teinte d'une colonne (palette du thème) ; taille des cartes, `small` · `medium` · `large` | neutre, `medium` |
@@ -157,6 +157,7 @@ Au survol, un élément hérité dit sa source : « to : hérité des propriét�
 | Glisser vers le haut ou le bas | Si la colonne est triée d'abord par priorité : des bandes 🔺 … ⏬ apparaissent pendant le glisser, déposer dans une bande écrit sa priorité, annoncée par l'emplacement ; se combine avec un changement de colonne. Sinon rien : l'ordre est calculé |
 | Clic sur la coche | Passe à `done`, ou revient à `to-do` |
 | Clic sur la carte | La sélectionne, et montre sa tâche dans la note ouverte à côté s'il y en a une ; `Ctrl`/`Cmd` : ouvre la note à côté |
+| **Ajouter** | Fenêtre de création de Tasks s'il est présent, sinon une description ; la ligne est écrite à la fin de la note réglée (créée au besoin), coche de la première colonne ouverte ; **Annuler** la retire |
 | Clic droit / `⋯` | Menu : déplacer vers…, priorité, échéance, éditer (fenêtre Tasks si présent), ouvrir la note à côté |
 | `Ctrl+Z` ou « Annuler » dans la notification | Défait la dernière action du tableau |
 | Clavier | Flèches pour se déplacer, `Espace` prend/dépose, `Entrée` ouvre |
@@ -189,8 +190,10 @@ couleur en dur.
 | Personnes | Pastille ronde à initiale, couleur stable dérivée du nom | `--color-*` du thème |
 
 - Icônes Lucide d'Obsidian (`setIcon`), pas d'emojis comme boutons.
-- Barre d'outils : recherche, puces `owner` et `Group by` (aucun par défaut), résumé
-  (§8), légende.
+- Barre d'outils : recherche, puces `owner` et `Group by` (aucun par défaut), **Ajouter**
+  (sauf tableau de notes), résumé (§8), légende.
+- Tableau plus large que le panneau : une seconde barre de défilement au-dessus des
+  colonnes, synchronisée avec celle du bas.
 - **Groupes** (`group by`, désactivés par défaut) : les en-têtes de colonnes restent en
   haut ; chaque groupe a un titre repliable (pastille, nom, nombre de tâches) puis une
   rangée de panneaux de même hauteur. Sur une carte, la personne du groupe n'est pas
@@ -208,8 +211,9 @@ couleur en dur.
 ## 9. Compatibilité
 
 - Identifiant `dot-kanban`, nom « dot-kanban », bloc `dot-kanban`.
-- Tasks optionnel ; avec lui : tâches 🔁 terminables depuis le tableau, fenêtre d'édition.
-  Fonctions utilisées : `executeToggleTaskDoneCommand` et `editTaskLineModal`, voir
+- Tasks optionnel ; avec lui : tâches 🔁 terminables depuis le tableau, fenêtres d'édition
+  et de création. Fonctions utilisées : `executeToggleTaskDoneCommand`, `editTaskLineModal`
+  et `createTaskLineModal`, voir
   [compatibilité](reference/compatibility.md) pour les versions requises.
 
 ## 10. Lots
@@ -218,5 +222,5 @@ couleur en dur.
    carte §5, design §7, transparence §8.
 2. **Gestes** (fait) : glisser-déposer entre colonnes et groupes, menu, annulation,
    clavier, API Tasks.
-3. **Confort** (à faire) : complétion dans le bloc, création d'une tâche depuis une
-   colonne.
+3. **Confort** (en cours) : création d'une tâche vers une note réglée (fait), ordre des
+   rangées (fait) ; complétion dans le bloc, création depuis une colonne (à faire).

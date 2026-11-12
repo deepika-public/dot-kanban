@@ -326,3 +326,23 @@ export function revertRewrite(content: string, done: Pick<Rewrite, "line" | "bef
   }
   return best === null ? null : replaceLines(content, best, done.after.length, done.before);
 }
+
+/**
+ * Adds `lines` at the end of the note, on a line of their own; the note keeps its final
+ * line break, or its lack of one, and its line endings. As a rewrite, `revertRewrite`
+ * takes them out again.
+ */
+export function appendTask(content: string, lines: readonly string[]): Rewrite {
+  const eol = content.includes("\r\n") ? "\r\n" : "\n";
+  const ended = content.endsWith("\n");
+  const head = content.length && !ended ? content + eol : content;
+  const line = head.length ? head.split("\n").length - 1 : 0;
+  return { content: head + lines.join(eol) + (ended ? eol : ""), line, before: [], after: [...lines] };
+}
+
+/** A task line as written in a note: `- [ ] text`, a list marker and a checkbox added if missing. */
+export function taskLine(text: string, symbol = " "): string {
+  const line = text.replace(/\r?\n[\s\S]*$/, "").trim();
+  if (checkboxOf(line) !== null) return line;
+  return `- [${symbol}] ${line.replace(/^\s*[-*+]\s+/, "").trim()}`;
+}

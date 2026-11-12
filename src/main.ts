@@ -35,7 +35,7 @@ export default class DotKanban extends Plugin {
     const index = new TaskIndex(this.app);
     index.watch(this);
     this.registerMarkdownCodeBlockProcessor(BLOCK, (source, el, ctx) => {
-      ctx.addChild(new TikBoard(el, this.app, index, source, ctx));
+      ctx.addChild(new TikBoard(el, this.app, index, source, ctx, this.options));
     });
     this.addCommand({
       id: "insert-board",

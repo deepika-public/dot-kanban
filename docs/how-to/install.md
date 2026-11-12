@@ -46,8 +46,9 @@ Copier `main.js`, `manifest.json` et `styles.css` dans `<vault>/.obsidian/plugin
 
 Ouvrir le vault, puis **Paramètres → Modules complémentaires** : autoriser les modules
 communautaires, activer **dot-kanban**. Les tableaux se configurent dans chaque bloc,
-voir la [syntaxe du bloc](../reference/syntax.md). Un seul réglage global : **Dessiner les
-coches dans les notes**, actif par défaut, à couper si le thème les dessine déjà. Avec
+voir la [syntaxe du bloc](../reference/syntax.md). Deux réglages globaux : **Dessiner les
+coches dans les notes**, actif par défaut, à couper si le thème les dessine déjà ; **Note
+des nouvelles tâches**, où le bouton **Ajouter** des tableaux les écrit. Avec
 Tasks : [configurer Tasks](tasks.md) pour qu'il connaisse les neuf statuts.
 
 ## Mettre à jour

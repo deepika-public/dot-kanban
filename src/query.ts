@@ -47,11 +47,24 @@ export interface QueryError {
   message: string;
 }
 
+/**
+ * Order of the lanes of `group by`: `natural` sorts the values alphanumerically (`2` before
+ * `10`), priorities from the highest; `reverse` the other way; `custom` puts the values
+ * listed first, in their order, then the others in natural order. The lane without value
+ * stays last.
+ */
+export interface GroupOrder {
+  kind: "natural" | "reverse" | "custom";
+  values: string[];
+}
+
 export interface Query {
   columns: ColumnDef[];
   filters: Filter[];
   sort: SortKey[];
   groupBy: string | null;
+  /** Order of the lanes, for the block's `group by` only. */
+  groupOrder: GroupOrder;
   /** Card elements shown, §5 of the spec. */
   show: Set<string>;
   width: string | null;
@@ -291,6 +304,32 @@ export function inScope(query: Query, path: string): boolean {
 
 /* ---------- the block ---------- */
 
+/** `a, "b, c", d` → `a`, `b, c`, `d`: quotes keep a comma in a value. */
+function quotedList(text: string): string[] {
+  return [...text.matchAll(/\s*(?:"([^"]*)"|([^,"][^,]*))\s*(?:,|$)/g)].map((m) => (m[1] ?? m[2]).trim()).filter((v) => v.length > 0);
+}
+
+function parseGroupOrder(text: string): GroupOrder {
+  const word = text.trim().toLowerCase();
+  if (word === "reverse") return { kind: "reverse", values: [] };
+  if (word === "alphanumeric" || word === "natural") return { kind: "natural", values: [] };
+  const values = quotedList(text);
+  if (!values.length) fail(t("emptyList", { text: "order" }));
+  return { kind: "custom", values };
+}
+
+/** `group by x`, then options after `|`: `order …`. */
+function parseGroup(rest: string, query: Query) {
+  const [head, ...options] = rest.split("|").map((s) => s.trim());
+  const m = head.match(/^by\s+([\w][\w-]*)$/i) ?? fail(t("badGroup", { text: head }));
+  query.groupBy = isBuiltInGroup(m[1].toLowerCase()) ? m[1].toLowerCase() : fieldKey(m[1]);
+  for (const option of options) {
+    const order = option.match(/^order(?:\s+(.*))?$/i);
+    if (!order) fail(t("unknownInstruction", { text: option }));
+    query.groupOrder = parseGroupOrder(order![1] ?? "");
+  }
+}
+
 function parseSize(text: string): CardSize {
   const size = text.trim().toLowerCase();
   if (size === "small" || size === "short") return "small";
@@ -339,6 +378,7 @@ export function parseQuery(source: string): Query {
     filters: [],
     sort: DEFAULT_SORT,
     groupBy: null,
+    groupOrder: { kind: "natural", values: [] },
     show: new Set(DEFAULT_SHOW),
     width: null,
     cards: "tasks",
@@ -383,11 +423,9 @@ export function parseQuery(source: string): Query {
           query.sort = parseSort(m[1]);
           return;
         }
-        case "group": {
-          const m = rest.match(/^by\s+([\w][\w-]*)$/i) ?? fail(t("badGroup", { text: rest }));
-          query.groupBy = isBuiltInGroup(m[1].toLowerCase()) ? m[1].toLowerCase() : fieldKey(m[1]);
+        case "group":
+          parseGroup(rest, query);
           return;
-        }
         case "show":
         case "hide": {
           const items = list(rest.toLowerCase());
