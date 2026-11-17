@@ -12,7 +12,10 @@ export interface SortKey {
   reverse: boolean;
 }
 
-/** Card sizes: `small` is one line, `medium` the usual card, `large` adds the sub-tasks. */
+/**
+ * Card sizes: `small` is one line, plus what a `show` line names; `medium` the usual card;
+ * `large` adds the sub-tasks.
+ */
 export type CardSize = "small" | "medium" | "large";
 /** Column tints, from the theme's palette. */
 export const COLORS = ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"] as const;
@@ -67,12 +70,22 @@ export interface Query {
   groupOrder: GroupOrder;
   /** Card elements shown, §5 of the spec. */
   show: Set<string>;
+  /**
+   * What a `show` line names, defaults left out: all a small card adds under its first
+   * line.
+   */
+  asked: Set<string>;
   width: string | null;
   /** `tasks`: one card per task; `notes`: one card per note. */
   cards: "tasks" | "notes";
   /** On a board of notes, the property whose value gives the column. */
   columnsBy: string | null;
   size: CardSize;
+  /**
+   * `add to`: the note the « Add » button writes new tasks at the end of, its path in the
+   * vault with `.md`. Null: the board has no « Add » button.
+   */
+  addTo: string | null;
   /**
    * `path root`: the folder the cards' paths are shown from, its segments without the
    * surrounding `/`, in NFC. Null to show the path in the vault. Display only.
@@ -92,7 +105,7 @@ export const BUILT_IN_SHOW = ["priority", ...DATE_KINDS, "subtasks", "recurrence
 const isBuiltInGroup = (key: string) => ["priority", "note", "heading"].includes(key);
 const BUILT_IN_SORTS = ["priority", ...DATE_KINDS, "path", "file order"];
 const KEYWORDS = [
-  "column", "columns", "cards", "size", "sort", "group", "show", "hide", "width", "not", "path", "heading", "description", "filename",
+  "column", "columns", "cards", "size", "sort", "group", "show", "hide", "width", "add", "not", "path", "heading", "description", "filename",
   "tags", "tag", "priority", "has", "no", "is", ...DATE_KINDS,
 ];
 
@@ -274,6 +287,13 @@ export function shownPath(path: string, root: string | null): string {
   return path;
 }
 
+/** A note's path as a block writes it: no leading `/`, `.md` added if missing; null when empty. */
+export function notePath(text: string): string | null {
+  const path = text.trim().replace(/^\/+/, "");
+  if (!path) return null;
+  return /\.md$/i.test(path) ? path : `${path}.md`;
+}
+
 /** A part as a test on the note's path, when it is about `path` or `filename` only. */
 function pathPart(text: string): ((path: string) => boolean) | null {
   const negated = text.match(/^not\s+(.+)$/i);
@@ -380,10 +400,12 @@ export function parseQuery(source: string): Query {
     groupBy: null,
     groupOrder: { kind: "natural", values: [] },
     show: new Set(DEFAULT_SHOW),
+    asked: new Set(),
     width: null,
     cards: "tasks",
     columnsBy: null,
     size: "medium",
+    addTo: null,
     pathRoot: null,
     errors: [],
   };
@@ -431,9 +453,21 @@ export function parseQuery(source: string): Query {
           const items = list(rest.toLowerCase());
           if (!items.length) fail(t("emptyList", { text: word }));
           for (const item of items.map((i) => (BUILT_IN_SHOW.includes(i) ? i : fieldKey(i)))) {
-            if (word.toLowerCase() === "show") query.show.add(item);
-            else query.show.delete(item);
+            if (word.toLowerCase() === "show") {
+              query.show.add(item);
+              query.asked.add(item);
+            } else {
+              query.show.delete(item);
+              query.asked.delete(item);
+            }
           }
+          return;
+        }
+        case "add": {
+          // `add to …` names the note of the « Add » button; any other `add …` is a filter.
+          const to = rest.match(/^to(?:\s+(.*))?$/i);
+          if (!to) return void query.filters.push(parseFilter(line));
+          query.addTo = notePath(to[1] ?? "") ?? fail(t("badAddTo"));
           return;
         }
         case "path": {

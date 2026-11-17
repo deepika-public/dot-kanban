@@ -26,6 +26,14 @@ describe("size and color", () => {
     expect(q.errors.map((e) => e.line)).toEqual([1, 2]);
     expect(q.errors[1].message).toContain("red, orange");
   });
+
+  it("keeps apart what a show line names, for the small cards", () => {
+    expect(parseQuery("size small").asked.size).toBe(0);
+    const q = parseQuery("size small\nshow Theme, due\nshow client\nhide client, path");
+    expect(q.errors).toEqual([]);
+    expect([...q.asked]).toEqual(["theme", "due"]);
+    expect([...q.show]).toEqual(["priority", "due", "subtasks", "owner", "theme"]);
+  });
 });
 
 describe("large cards", () => {

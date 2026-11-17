@@ -3,7 +3,7 @@
 Un tableau est un bloc de code de langage `dot-kanban`, dans n'importe quelle note, affiché en
 lecture et en aperçu en direct, sur toute la largeur du panneau (même avec la longueur de
 ligne lisible). Plusieurs blocs sont des tableaux indépendants. Le plugin
-a deux réglages globaux, le dessin des coches dans les notes ([format des tâches](task-format.md#statuts)) et la note où le bouton **Ajouter** écrit les nouvelles tâches ([la barre d'outils](#la-barre-doutils)) : tout le tableau se règle dans le bloc.
+n'a qu'un réglage global, le dessin des coches dans les notes ([format des tâches](task-format.md#statuts)) : tout le tableau se règle dans le bloc.
 
 Une instruction par ligne, à la manière des requêtes Tasks. Une ligne qui commence par `#`
 est un commentaire. Les `column` donnent l'ordre des colonnes ; les autres lignes sont en
@@ -26,6 +26,8 @@ group by owner
 show client
 # chemins affichés à partir de Projets/ : « Site web.md »
 path root Projets
+# le bouton Ajouter écrit à la fin de cette note
+add to Projets/Inbox.md
 width 240px
 ```
 ````
@@ -44,6 +46,7 @@ width 240px
 | `group by x` | Une rangée par valeur de `x` : un champ (`owner`, `client`…), `priority`, `note` ou `heading`. Changeable dans la barre d'outils | aucun groupe |
 | `group by x \| order …` | Ordre des rangées : `alphanumeric`, `reverse`, ou une liste de valeurs, voir [ordre des rangées](#ordre-des-rangées) | `alphanumeric` |
 | `show a, b` · `hide a, b` | Éléments des cartes, voir [ce qu'affiche une carte](#ce-quaffiche-une-carte) | `priority, due, subtasks, owner, path` |
+| `add to Dossier/Note.md` | Note à la fin de laquelle le bouton **Ajouter** écrit les nouvelles tâches, voir [la barre d'outils](#la-barre-doutils) : chemin dans le vault, `.md` facultatif, `/` au début indifférent. Sans note : erreur. Si plusieurs lignes, la dernière l'emporte. Sans effet sur un [tableau de notes](#tableau-de-notes) | pas de bouton **Ajouter** |
 | `width 200px` | Largeur minimale d'une colonne ; largeur exacte d'une colonne seule, qui ne s'étire pas | `240px` |
 | `path root dossier` | Dossier à partir duquel le chemin des notes est affiché, voir [le chemin affiché](#le-chemin-affiché). Un ou plusieurs segments (`Clients/ACME`), `/` au début ou à la fin indifférent. Sans dossier : erreur. Si plusieurs lignes, la dernière l'emporte. Ce n'est pas un filtre | chemin dans le vault |
 | Un filtre | Ne garder que les tâches qui le vérifient. Plusieurs lignes : toutes doivent l'être | tout le vault |
@@ -131,9 +134,13 @@ survol.
 
 | Taille | La carte montre |
 | --- | --- |
-| `small` (ou `short`) | une ligne : coche, titre tronqué, priorité, `⋯` |
+| `small` (ou `short`) | une ligne : coche, titre tronqué, priorité, `⋯` ; en dessous, seulement ce qu'une ligne `show` nomme |
 | `medium` | la carte décrite ci-dessus |
 | `large` | la même, plus la liste de ses sous-tâches, chacune avec sa coche ; sur un tableau de notes, les tâches de la note |
+
+Une petite carte n'ajoute pas les éléments affichés par défaut (échéance, sous-tâches,
+personnes, chemin) : sans ligne `show`, elle tient sur une ligne. `show theme, due` y met
+le champ `theme` et l'échéance, sous le titre ; `hide theme` l'en retire.
 
 ```dot-kanban
 column [ ] À faire | size small
@@ -211,20 +218,20 @@ signale l'erreur.
 ## La barre d'outils
 
 Recherche (titre et chemin affiché, sans casse ni accents), puce **owner** (une personne), puce
-**Group by** (aucun, `owner`, `priority`, `note`, `heading`), bouton **Ajouter**, puis le **résumé** :
+**Group by** (aucun, `owner`, `priority`, `note`, `heading`), bouton **Ajouter** si le bloc a une ligne `add to`, puis le **résumé** :
 nombre de cartes, filtres du bloc, et **écartées**, qui liste les tâches lues mais non
 montrées avec leur raison (coche sans colonne, coche inconnue, au-delà de `limit`, barre
 d'outils). **?** ouvre la légende des colonnes : coche, statut, ce qui est écrit en y
 entrant. **`</>`** passe la note en édition, curseur dans le bloc, pour le modifier. Les choix de la barre ne sont pas enregistrés dans la note ; ils restent tant que
 la note est ouverte.
 
-**Ajouter** crée une tâche et l'écrit **à la fin de la note choisie dans les réglages**
-(**Paramètres → dot-kanban → Note des nouvelles tâches**, `.md` facultatif), créée avec
-ses dossiers si elle n'existe pas. Avec Tasks, sa fenêtre de création
+**Ajouter** crée une tâche et l'écrit **à la fin de la note que le bloc nomme**
+(`add to Projets/Inbox.md` : chemin dans le vault, `.md` facultatif), créée avec
+ses dossiers si elle n'existe pas. Chaque tableau a ainsi sa note. Avec Tasks, sa fenêtre de création
 s'ouvre : description, priorité, dates, statut, comme dans Tasks. Sans Tasks, une fenêtre
 demande la description ; la tâche prend la coche de la première colonne qui n'est ni
-`[x]` ni `[-]`. **Annuler** retire la ligne, si elle n'a pas changé depuis. Sans note
-choisie, une notification indique le réglage. La tâche n'apparaît sur le tableau que si
+`[x]` ni `[-]`. **Annuler** retire la ligne, si elle n'a pas changé depuis. Sans ligne
+`add to`, le tableau n'a pas de bouton. La tâche n'apparaît sur le tableau que si
 ses filtres la laissent passer. Pas de bouton sur un [tableau de notes](#tableau-de-notes).
 
 Un tableau plus large que le panneau défile de côté par **deux barres**, au-dessus et

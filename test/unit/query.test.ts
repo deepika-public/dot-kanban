@@ -165,3 +165,20 @@ describe("path root", () => {
     expect(inScope(q, "Perso/1. a.md")).toBe(false);
   });
 });
+
+describe("add to", () => {
+  it("names the note of the Add button, .md added, the last line kept", () => {
+    expect(parseQuery("column [ ]").addTo).toBeNull();
+    expect(parseQuery("add to /Inbox/New").addTo).toBe("Inbox/New.md");
+    const q = parseQuery("ADD TO 🌐 Sync/🌱.md\nadd to  Other.MD");
+    expect(q.errors).toEqual([]);
+    expect(q.addTo).toBe("Other.MD");
+  });
+
+  it("reports a missing note, and leaves any other line starting with add to the filters", () => {
+    const q = parseQuery("add to\nadd includes x");
+    expect(q.errors.map((e) => e.line)).toEqual([1]);
+    expect(q.addTo).toBeNull();
+    expect(q.filters.map((f) => f.text)).toEqual(["add includes x"]);
+  });
+});

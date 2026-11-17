@@ -10,6 +10,7 @@ import {
   Menu,
   Notice,
   TFile,
+  normalizePath,
   setIcon,
   type App,
   type MarkdownPostProcessorContext,
@@ -24,7 +25,6 @@ import { language, priorityName, t } from "./i18n";
 import { statusIcon } from "./icons";
 import { HiddenModal, LegendModal, NewTaskModal } from "./modals";
 import { BUILT_IN_SHOW, inScope, parseQuery, shownPath, type CardSize, type ColumnDef, type Query } from "./query";
-import { newTaskPath, type Settings } from "./settings";
 import { statusOf, type Status } from "./statuses";
 import { tasksApi } from "./tasks-api";
 import {
@@ -153,8 +153,6 @@ export class TikBoard extends MarkdownRenderChild {
     private readonly index: TaskIndex,
     source: string,
     private readonly ctx: MarkdownPostProcessorContext,
-    /** The plugin's settings, the same object as they change. */
-    private readonly settings: Settings,
   ) {
     super(containerEl);
     this.query = parseQuery(source);
@@ -275,15 +273,12 @@ export class TikBoard extends MarkdownRenderChild {
     };
     const person = chip((e) => this.choosePerson(e));
     const lanes = chip((e) => this.chooseLanes(e));
-    // A new task goes to a note of its own, not to a board of notes.
-    if (!this.notesBoard) {
-      const add = bar.createEl("button", { cls: "dot-kanban-chip dot-kanban-add" });
+    // « Add » is there when the block names the note new tasks go to (`add to`).
+    const addPath = this.addPath();
+    if (addPath) {
+      const add = bar.createEl("button", { cls: "dot-kanban-chip dot-kanban-add", attr: { "aria-label": t("addLabel", { path: addPath }) } });
       setIcon(add.createSpan({ cls: "dot-kanban-add-icon" }), "plus");
       add.createSpan({ text: t("add") });
-      add.onmouseenter = () => {
-        const path = newTaskPath(this.settings.newTaskFile);
-        add.setAttr("aria-label", path ? t("addLabel", { path }) : t("addNoFile"));
-      };
       add.onclick = () => void this.addTask();
     }
     bar.createDiv({ cls: "dot-kanban-spacer" });
@@ -598,37 +593,38 @@ export class TikBoard extends MarkdownRenderChild {
       this.cardMenu(task, e);
     };
     this.cardEvents(el, task);
-    // A small card is its first line only.
-    if (size === "small") return;
+    // A small card is its first line, then only what a `show` line names: the elements
+    // shown by default stay out of it.
+    const shown = size === "small" ? this.query.asked : show;
 
     const meta = createDiv({ cls: "dot-kanban-card-meta" });
     for (const kind of ["due", "scheduled", "start", "created", "done", "cancelled"] as DateKind[]) {
       const day = task.info.dates[kind];
-      if (!show.has(kind) || day === undefined) continue;
+      if (!shown.has(kind) || day === undefined) continue;
       const chip = meta.createSpan({ cls: "dot-kanban-meta", attr: { "data-date": kind, "aria-label": kind } });
       setIcon(chip.createSpan({ cls: "dot-kanban-meta-icon" }), DATE_ICONS[kind]);
       chip.createSpan({ text: dayLabel(day, today, language()) });
       const open = task.status?.type !== "DONE" && task.status?.type !== "CANCELLED";
       chip.toggleClass("is-overdue", kind === "due" && open && day < today);
     }
-    if (show.has("subtasks") && task.subtasks) {
+    if (shown.has("subtasks") && task.subtasks) {
       const chip = meta.createSpan({ cls: "dot-kanban-meta", attr: { "aria-label": t("subtasks", task.subtasks) } });
       setIcon(chip.createSpan({ cls: "dot-kanban-meta-icon" }), "list-checks");
       chip.createSpan({ text: `${task.subtasks.done}/${task.subtasks.total}` });
     }
-    if (show.has("recurrence") && task.info.recurrence !== null) {
+    if (shown.has("recurrence") && task.info.recurrence !== null) {
       const chip = meta.createSpan({ cls: "dot-kanban-meta", attr: { "aria-label": t("recurring", { rule: task.info.recurrence }) } });
       setIcon(chip.createSpan({ cls: "dot-kanban-meta-icon" }), "repeat");
       if (task.info.recurrence) chip.createSpan({ text: task.info.recurrence });
     }
-    for (const key of show) {
+    for (const key of shown) {
       if (BUILT_IN_SHOW.includes(key)) continue;
       const values = fieldValues(task, key);
       if (!values.length) continue;
       const chip = meta.createSpan({ cls: "dot-kanban-meta dot-kanban-field", text: `${key}: ${values.map(valueText).join(", ")}` });
       this.source(chip, task, key);
     }
-    if (show.has(OWNER)) {
+    if (shown.has(OWNER)) {
       const lanePerson = this.toolbar.groupBy === OWNER && inLane?.value ? valueText(inLane.value).toLowerCase() : null;
       const people = fieldValues(task, OWNER).map(valueText).filter((p) => p.toLowerCase() !== lanePerson);
       if (people.length) {
@@ -640,7 +636,7 @@ export class TikBoard extends MarkdownRenderChild {
     if (meta.childElementCount) el.appendChild(meta);
 
     if (size === "large" && task.children.length) this.children(el, task.children, task.path);
-    if (show.has("path")) {
+    if (shown.has("path")) {
       const path = this.shownPath(task);
       // Shown from the `path root`: the path in the vault on hover.
       el.createDiv({ cls: "dot-kanban-card-source", text: path, attr: path === task.path ? {} : { "aria-label": task.path } });
@@ -1017,13 +1013,18 @@ export class TikBoard extends MarkdownRenderChild {
 
   /* ---------- writing ---------- */
 
+  /** The note of « Add », named by `add to`; null without it, and on a board of notes. */
+  private addPath(): string | null {
+    return this.notesBoard || !this.query.addTo ? null : normalizePath(this.query.addTo);
+  }
+
   /**
    * « Add »: asks for a task, with the Tasks dialog when Tasks is there, and writes it at
-   * the end of the note of the settings, created if missing. Undone like any other write.
+   * the end of the note the block names, created if missing. Undone like any other write.
    */
   private async addTask() {
-    const path = newTaskPath(this.settings.newTaskFile);
-    if (!path) return void new Notice(t("addNeedsFile"), 10000);
+    const path = this.addPath();
+    if (!path) return;
     const create = tasksApi(this.app)?.createTaskLineModal;
     const text = create ? await create() : await new NewTaskModal(this.app, path).ask();
     if (!text?.trim()) return;

@@ -27,7 +27,9 @@ export default class DotKanban extends Plugin {
   async onload() {
     const getLanguage = (obsidian as { getLanguage?: () => string }).getLanguage;
     setLanguage(getLanguage?.() ?? moment.locale());
-    this.options = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<Settings> | null) };
+    // Only what is still a setting is kept: a note for new tasks saved by 0.8.0 is dropped.
+    const saved = (await this.loadData()) as Partial<Settings> | null;
+    this.options = { noteCheckboxes: saved?.noteCheckboxes ?? DEFAULT_SETTINGS.noteCheckboxes };
     this.applyOptions();
     this.register(() => document.body.removeClass(CHECKBOXES_CLASS));
     this.addSettingTab(new TikSettingTab(this.app, this, this.options, () => this.saveOptions()));
@@ -35,7 +37,7 @@ export default class DotKanban extends Plugin {
     const index = new TaskIndex(this.app);
     index.watch(this);
     this.registerMarkdownCodeBlockProcessor(BLOCK, (source, el, ctx) => {
-      ctx.addChild(new TikBoard(el, this.app, index, source, ctx, this.options));
+      ctx.addChild(new TikBoard(el, this.app, index, source, ctx));
     });
     this.addCommand({
       id: "insert-board",

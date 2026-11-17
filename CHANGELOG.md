@@ -7,6 +7,24 @@ d'une version devient le texte de sa release, sur GitLab et sur GitHub.
 
 ## [Non publié]
 
+## [0.9.0] - 2026-11-17
+
+### Modifié
+
+- **Petites cartes** : une carte `size small` affiche sous son titre ce qu'une ligne
+  `show` nomme (`show theme, due`) : champs, dates, sous-tâches, personnes, chemin. Sans
+  ligne `show`, elle tient toujours sur une ligne : les éléments affichés par défaut ne
+  s'y ajoutent pas. Un bloc qui avait `size small` et une ligne `show` change donc
+  d'aspect.
+- **Note des nouvelles tâches** : elle s'écrit dans chaque bloc, `add to Dossier/Note.md`
+  (`.md` facultatif), et non plus dans les réglages du plugin : chaque tableau a la
+  sienne. Un tableau sans cette ligne n'a pas de bouton **Ajouter**.
+
+### Supprimé
+
+- Le réglage global **Note des nouvelles tâches**. Sa valeur n'est pas reprise : ajouter
+  la ligne `add to …` aux tableaux qui doivent garder leur bouton **Ajouter**.
+
 ## [0.8.0] - 2026-11-12
 
 ### Ajouté
@@ -164,7 +182,8 @@ Publiées avant le dépôt actuel : leurs dates n'ont pas été conservées.
 
 - Version d'origine, dans le dépôt `obsidian_features` (`deepika-kanban/`).
 
-[Non publié]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/compare/0.8.0...main
+[Non publié]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/compare/0.9.0...main
+[0.9.0]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.9.0
 [0.8.0]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.8.0
 [0.7.0]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.7.0
 [0.6.0]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.6.0
