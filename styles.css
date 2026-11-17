@@ -806,6 +806,12 @@ body.dot-kanban-checkboxes input.task-list-item-checkbox[data-task="/"]:checked:
     text-overflow: ellipsis;
 }
 
+/* What a `show` line names, under the first line of a small card. */
+.dot-kanban-card[data-size="small"] .dot-kanban-card-meta,
+.dot-kanban-card[data-size="small"] .dot-kanban-card-source {
+    margin-top: 2px;
+}
+
 .dot-kanban-card-children {
     list-style: none;
     margin: 0;

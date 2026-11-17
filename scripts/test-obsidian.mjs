@@ -20,6 +20,7 @@ const BOARD = [
   "column [?] Clarify",
   "column [x] | sort by done reverse",
   "path does not include Archive/",
+  "add to Inbox/New",
   "width 150px",
   "```",
   "",
@@ -308,6 +309,7 @@ try {
   await shownBoard("Narrow.md");
   await sleep(300);
   assert.equal((await topBar()).hidden, true, "no bar above a board that fits");
+  assert.equal(await dev.eval(`!!window.__k.board().querySelector('.dot-kanban-add')`), false, "no Add button without `add to`");
   await openBoard("Wide.md");
   await shownBoard("Wide.md");
   await until(async () => !(await topBar()).hidden, 10000, "the bar above a wide board");
@@ -319,14 +321,11 @@ try {
   await until(async () => (await topBar()).topLeft === 120, 5000, "the bar above following the board");
   console.log("PASS: a scroll bar above a wide board, following the one below.");
 
-  // Add: the note comes from the settings; Tasks' dialog when Tasks is on, a description otherwise.
+  // Add: the note is the one the block names; Tasks' dialog when Tasks is on, a description otherwise.
   await openBoard();
   await until(() => dev.eval(`!!window.__k.board()?.querySelector('.dot-kanban-add')`), 10000, "the Add button");
   // Turning Tasks on or off draws the note again: the button is looked for until it is there.
   const clickAdd = () => until(() => dev.eval(`(()=>{const b=window.__k.board()?.querySelector('.dot-kanban-add');b?.click();return !!b})()`), 10000, "the Add button");
-  await clickAdd();
-  await until(async () => (await dev.eval(`window.__k.notices()`)).some((n) => n.includes("dot-kanban")), 5000, "the notice without a note");
-  await dev.eval(`(()=>{app.plugins.plugins['dot-kanban'].options.newTaskFile='Inbox/New';return true})()`);
   await dev.eval(`app.plugins.enablePlugin('${TASKS_ID}').then(()=>true)`);
   await until(() => dev.eval(`!!app.plugins.plugins['${TASKS_ID}']?.apiV1?.createTaskLineModal`), 10000, "Tasks' API");
   await clickAdd();
@@ -351,7 +350,7 @@ try {
   await until(async () => (await dev.eval(`window.__k.notices()`)).at(-1)?.includes("Typed task"), 5000, "the notice of the typed task");
   await clickUndo();
   await until(() => read("Inbox/New.md") === "- [ ] From Tasks 📅 2026-12-01", 10000, "Undo of an added task");
-  console.log("PASS: Add, with Tasks' dialog or a description, at the end of the note of the settings; Undo.");
+  console.log("PASS: Add, with Tasks' dialog or a description, at the end of the note the block names; no button without it; Undo.");
 
   // Renaming a note keeps its cards writable.
   await dev.eval(`app.fileManager.renameFile(app.vault.getAbstractFileByPath('Projects/Windows.md'),'Projects/Renamed.md').then(()=>true)`);

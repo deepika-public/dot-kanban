@@ -65,7 +65,8 @@ width 220px
 | `group by x` | une rangée par valeur : un champ (`owner`…), `priority`, `note`, `heading` ; `\| order reverse` ou `\| order a, b` pour l'ordre des rangées | aucun ; rangées en ordre alphanumérique |
 | `show` / `hide` | éléments des cartes | `priority, due, subtasks, owner, path` |
 | `width` | largeur minimale d'une colonne ; une colonne seule mesure exactement `width` | `240px` |
-| `size small` · `medium` · `large` | une ligne par carte ; la carte habituelle ; la carte et ses sous-tâches | `medium` |
+| `add to Dossier/Note.md` | la note à la fin de laquelle **Ajouter** écrit les nouvelles tâches (`.md` facultatif) | pas de bouton **Ajouter** |
+| `size small` · `medium` · `large` | une ligne par carte, plus ce que `show` nomme ; la carte habituelle ; la carte et ses sous-tâches | `medium` |
 | `cards notes` + `columns by statut` | une carte par note, dans la colonne de sa propriété `statut` (`column "en cours" Maintenant`) ; glisser réécrit la propriété | une carte par tâche |
 | `path root dossier` | chemins affichés à partir de ce dossier (`path root Projets` : `Site.md`) ; les filtres gardent le chemin complet | chemin dans le vault |
 
@@ -113,8 +114,9 @@ suggestion (« vouliez-vous dire `column` ? ») ; le reste s'applique.
 | règle de récurrence | `recurrence` | masquée |
 | chemin de la note (à partir de `path root`, s'il y en a un) | `path` | affiché |
 
-- **Tailles** : `size small` réduit chaque carte à sa première ligne, `size large` y ajoute
-  la liste des sous-tâches ; une colonne peut avoir la sienne.
+- **Tailles** : `size small` réduit chaque carte à sa première ligne, plus ce qu'une ligne
+  `show` nomme (`show theme, due`) ; `size large` ajoute la liste des sous-tâches ; une
+  colonne peut avoir la sienne.
 - **Tableau de notes** (`cards notes`) : une carte par note, titrée du nom de la note, avec
   ses propriétés en champs et la progression de ses tâches.
 - **Groupes** (`group by`) : les colonnes restent en haut ; une rangée repliable par valeur ;
@@ -139,7 +141,7 @@ suggestion (« vouliez-vous dire `column` ? ») ; le reste s'applique.
 | **Annuler** dans la notification, ou `Ctrl+Z` | défait la dernière écriture, si la ligne n'a pas changé depuis |
 | Clavier | flèches entre cartes ; `Espace` prend, `←` `→` choisissent, `Espace` dépose, `Échap` renonce ; `Entrée` ouvre |
 | Toucher | appui long pour prendre une carte |
-| Barre d'outils | rechercher, choisir une personne, changer de groupement ; **Ajouter** une tâche à la fin de la note des réglages (fenêtre de Tasks s'il est là) ; `</>` ouvre le bloc en édition |
+| Barre d'outils | rechercher, choisir une personne, changer de groupement ; **Ajouter** une tâche à la fin de la note nommée par `add to` (fenêtre de Tasks s'il est là ; pas de bouton sans cette ligne) ; `</>` ouvre le bloc en édition |
 
 Rien n'est écrit si la tâche a changé depuis que le tableau l'a lue : une notification le
 dit. Une tâche 🔁 qui passe à `[x]` est confiée à Tasks, qui écrit l'occurrence suivante ;
@@ -154,7 +156,7 @@ sans Tasks, le geste est refusé.
 | Les propriétés d'une note | les valeurs par défaut de ses tâches (`owner`, `client`…) |
 | Le thème Obsidian | toutes les couleurs, polices et arrondis du tableau ; un snippet CSS peut viser les classes `dot-kanban-*` |
 
-| Paramètres → dot-kanban | **Dessiner les coches dans les notes** (actif) : les neuf coches de la §1 avec leur couleur et leur marque dans les notes, seules `[x]` et `[-]` barrées ; à couper si le thème les dessine. **Note des nouvelles tâches** : où **Ajouter** écrit |
+| Paramètres → dot-kanban | **Dessiner les coches dans les notes** (actif) : les neuf coches de la §1 avec leur couleur et leur marque dans les notes, seules `[x]` et `[-]` barrées ; à couper si le thème les dessine. C'est le seul réglage global : le reste s'écrit dans chaque bloc |
 
 Deux tableaux sont indépendants, même dans une seule note.
 

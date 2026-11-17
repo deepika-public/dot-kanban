@@ -64,7 +64,7 @@ premier plan, et vérifie, en relisant les fichiers sur le disque après chaque 
   un clic qui ne fait que sélectionner, **Ouvrir la note à côté** curseur sur la tâche, puis
   un clic qui y montre une autre tâche, `Ctrl`+clic qui réutilise le même onglet ; la
   barre de défilement au-dessus d'un tableau large, absente d'un tableau étroit ;
-  **Ajouter** sans note réglée, avec la fenêtre de Tasks (annulée, puis remplie), sans
+  pas de bouton **Ajouter** sans `add to` ; **Ajouter** avec la fenêtre de Tasks (annulée, puis remplie), sans
   Tasks, puis **Annuler** ; une note renommée dont les cartes restent modifiables.
 
 Tasks vient de `TASKS_DIR` (un dossier avec `main.js`, `manifest.json`, `styles.css`) si la

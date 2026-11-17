@@ -68,7 +68,7 @@ groupe à l'autre, une carte se glisse aussi. L'ordre des rangées s'impose
 (`group by owner | order reverse`, `| order Bob, Alice`).
 
 **Ajouter** crée une tâche, dans la fenêtre de Tasks s'il est installé, et l'écrit à la fin
-de la note choisie dans les réglages.
+de la note que le bloc nomme (`add to Projets/Inbox.md`) : chaque tableau a la sienne.
 
 Tout tient en une page dans le [guide](docs/guide.md) ; le [premier tableau](docs/tutorials/first-board.md)
 déroule ces étapes ; la [syntaxe du bloc](docs/reference/syntax.md) et le [format des tâches](docs/reference/task-format.md)
@@ -79,7 +79,7 @@ décrivent le reste.
 - Une action ne modifie que la ligne de la tâche, et seulement si elle la retrouve : si la
   tâche a changé entre-temps, rien n'est écrit et une notification le dit. Sur un tableau
   de notes, elle ne modifie qu'une propriété de la note. **Ajouter** n'écrit qu'une ligne,
-  à la fin de la note des nouvelles tâches.
+  à la fin de la note nommée par `add to`.
 - Rien n'est caché sans le dire : les tâches lues mais non affichées sont comptées dans le
   résumé, avec leur raison ; une ligne du bloc non comprise est signalée avec son numéro.
 - Le HTML d'une tâche est affiché comme du texte, jamais interprété.
