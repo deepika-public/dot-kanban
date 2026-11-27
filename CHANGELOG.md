@@ -7,6 +7,28 @@ d'une version devient le texte de sa release, sur GitLab et sur GitHub.
 
 ## [Non publié]
 
+## [0.10.0] - 2026-11-27
+
+### Ajouté
+
+- **Mentions** : `@Alice` sur la ligne d'une tâche l'assigne, comme `[owner:: Alice]`, qui
+  reste lu. Les mentions ne comptent pas dans le texte de la tâche (recherche, filtre
+  `description`). Glisser une carte d'un groupe `owner` à un autre écrit des mentions sur une
+  ligne qui en avait, `[owner:: …]` sinon.
+- **Guillemets et jokers dans les filtres** : `path includes "A OR B/"` garde ses espaces et
+  son ` OR ` ; `*` remplace tout sauf `/`, `**` tout, `\*` est une étoile
+  (`filename is "Projet*"`, `path includes "Clients/**/Suivi"`). Une étoile dans une valeur
+  de filtre devient donc un joker : écrire `\*` pour l'étoile elle-même.
+- **Rangées vides** : `group by priorite | order "Haute", "Basse" | show empty` dessine
+  une rangée pour chaque valeur nommée, même sans carte (pour `group by priority`, une par
+  priorité) : chaque case du tableau reçoit des cartes glissées, sans notes factices.
+
+### Modifié
+
+- **Résumé allégé** : la barre d'outils n'affiche plus que le nombre de cartes (et les
+  écartées), à droite des puces ; les filtres du bloc passent dans la légende (**?**), une
+  ligne chacun.
+
 ## [0.9.0] - 2026-11-17
 
 ### Modifié
@@ -79,7 +101,7 @@ d'une version devient le texte de sa release, sur GitLab et sur GitHub.
 ### Ajouté
 
 - **Chemins plus courts sur les cartes** : instruction de bloc `path root <dossier>`
-  (`path root samm-workspace`, `path root Clients/ACME`). Les cartes affichent le chemin de
+  (`path root mon-coffre`, `path root Clients/ACME`). Les cartes affichent le chemin de
   la note à partir de ce dossier, le chemin complet au survol. Même chemin dans la
   recherche, les groupes `note`, la source d'un champ hérité et la liste des écartées. Les
   filtres et le tri gardent le chemin dans le vault ; une note hors du dossier garde son
@@ -182,7 +204,8 @@ Publiées avant le dépôt actuel : leurs dates n'ont pas été conservées.
 
 - Version d'origine, dans le dépôt `obsidian_features` (`deepika-kanban/`).
 
-[Non publié]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/compare/0.9.0...main
+[Non publié]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/compare/0.10.0...main
+[0.10.0]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.10.0
 [0.9.0]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.9.0
 [0.8.0]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.8.0
 [0.7.0]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.7.0
