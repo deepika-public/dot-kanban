@@ -7,6 +7,14 @@ d'une version devient le texte de sa release, sur GitLab et sur GitHub.
 
 ## [Non publié]
 
+## [0.10.1] - 2026-11-27
+
+### Corrigé
+
+- **Un seul bouton `</>` en aperçu en direct, avec Obsidian 1.15** : Obsidian y range son
+  bouton d'édition du bloc dans un nouveau conteneur, et il réapparaissait au survol à côté
+  de celui de la barre d'outils. Il est de nouveau masqué.
+
 ## [0.10.0] - 2026-11-27
 
 ### Ajouté
@@ -204,7 +212,8 @@ Publiées avant le dépôt actuel : leurs dates n'ont pas été conservées.
 
 - Version d'origine, dans le dépôt `obsidian_features` (`deepika-kanban/`).
 
-[Non publié]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/compare/0.10.0...main
+[Non publié]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/compare/0.10.1...main
+[0.10.1]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.10.1
 [0.10.0]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.10.0
 [0.9.0]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.9.0
 [0.8.0]: https://gitlab.com/deepika-public/deepika-obsidian-toolbox/dot-kanban/-/releases/0.8.0
