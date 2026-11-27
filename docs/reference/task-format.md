@@ -61,6 +61,14 @@ résout du plus précis au plus général :
 (`[o:: Alice]`) comme en propriété (`o: Alice`). `[[Alice]]` s'affiche « Alice ». Quand le
 tableau écrit ce champ, il écrit `owner` et retire `o`.
 
+Sur la ligne, **`@Alice`** assigne aussi : une mention après une espace, dans le texte de la
+tâche, s'ajoute aux valeurs d'`owner` (`@Alice @Bob` pour deux personnes). Un `@` collé à un
+mot (`a@b.fr`), suivi d'un chemin (`@types/node`) ou écrit dans la valeur d'un champ n'est
+pas une mention. Les mentions ne comptent pas dans le texte de la tâche : la recherche et le
+filtre `description` les ignorent. Quand le tableau écrit les personnes d'une ligne qui les
+mentionne, il écrit des mentions à la place des anciennes ; il écrit `[owner:: …]` si la
+ligne n'en a pas, ou si une valeur ne peut pas en être une (`[[Bob]]`, `Bob Martin`).
+
 Les champs de Tasks en format Dataview (`due`, `scheduled`, `start`, `created`,
 `completion`, `cancelled`, `priority`, `repeat`, `id`, `dependsOn`, `onCompletion`) ne
 sont pas des champs utilisateur : ils sont lus comme dates, priorité et récurrence.

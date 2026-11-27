@@ -83,6 +83,9 @@ describe("filters", () => {
     expect(match("client includes acm")).toEqual(["Budget"]);
     expect(match("not owner is Alice")).toEqual(["Fonts", "Budget"]);
     expect(match("owner is Alice OR client is ACME")).toEqual(["Logo #design", "Budget"]);
+    expect(match('description is "log*"')).toEqual(["Logo #design"]);
+    expect(match('client is "AC*"')).toEqual(["Budget"]);
+    expect(match('note.team is "W*"')).toHaveLength(3);
   });
 });
 
@@ -98,6 +101,24 @@ describe("notes to read", () => {
     expect(reads("filename is Site.md", "Projets/Site.md")).toBe(true);
     expect(reads("path includes A/ OR path includes B/", "B/x.md")).toBe(true);
     expect(reads("path includes A/ OR path includes B/", "C/x.md")).toBe(false);
+  });
+
+  it("reads quoted values and wildcards", () => {
+    const scope = 'path includes "1. Projets/*/P*/P*" OR path includes "Tableaux/Cases vides/"';
+    expect(reads(scope, "Coffre/1. Projets/Web/Portail/Portail.md")).toBe(true);
+    expect(reads(scope, "Coffre/1. Projets/Web/Portail/Notes.md")).toBe(false);
+    expect(reads(scope, "Coffre/3. Archives/Projets/Portail/Portail.md")).toBe(false);
+    expect(reads(scope, "Coffre/Tableaux/Cases vides/Haute.md")).toBe(true);
+    expect(reads('path includes "Projets/**/Site"', "Projets/A/B/Site.md")).toBe(true);
+    expect(reads('path includes "Projets/*/Site"', "Projets/A/B/Site.md")).toBe(false);
+    expect(reads('filename is "*.md"', "Projets/Site.md")).toBe(true);
+    expect(reads('filename is "S*"', "Projets/Site.md")).toBe(true);
+    expect(reads('filename is "X*"', "Projets/Site.md")).toBe(false);
+    expect(reads('path includes "A OR B/"', "A OR B/x.md")).toBe(true);
+    expect(reads('path includes "A OR B/"', "B/x.md")).toBe(false);
+    expect(reads("filename is a\\*b.md", "a*b.md")).toBe(true);
+    expect(reads("filename is a\\*b.md", "axb.md")).toBe(false);
+    expect(reads('path includes " Old "', "Archives/ Old /x.md")).toBe(true);
   });
 
   it("reads every note when a filter looks at more than the path", () => {
@@ -117,14 +138,14 @@ describe("notes to read", () => {
 });
 
 describe("path root", () => {
-  const note = "🧿 Deepika/0. ☕ Work/samm-workspace/1. 🪚 Chantiers/Planning référent/Planning référent.md";
+  const note = "📁 Perso/0. Travail/mon-coffre/1. 📂 Projets/Site web/Site web.md";
 
   it("is read apart from the path filters, the last line winning", () => {
-    const q = parseQuery("path root samm-workspace\npath includes Chantiers");
-    expect(q.pathRoot).toBe("samm-workspace");
-    expect(q.filters.map((f) => f.text)).toEqual(["path includes Chantiers"]);
+    const q = parseQuery("path root mon-coffre\npath includes Projets");
+    expect(q.pathRoot).toBe("mon-coffre");
+    expect(q.filters.map((f) => f.text)).toEqual(["path includes Projets"]);
     expect(q.errors).toEqual([]);
-    expect(parseQuery("PATH ROOT /clients/samm-workspace/\npath root  Other").pathRoot).toBe("Other");
+    expect(parseQuery("PATH ROOT /clients/mon-coffre/\npath root  Other").pathRoot).toBe("Other");
     expect(parseQuery("path includes x").pathRoot).toBeNull();
   });
 
@@ -138,29 +159,29 @@ describe("path root", () => {
   });
 
   it("shows what follows the root folder, at the start or within the path", () => {
-    expect(shownPath(note, "samm-workspace")).toBe("1. 🪚 Chantiers/Planning référent/Planning référent.md");
-    expect(shownPath("samm-workspace/Notes/a.md", "samm-workspace")).toBe("Notes/a.md");
-    expect(shownPath(note, parseQuery("path root 0. ☕ Work/samm-workspace/").pathRoot)).toBe("1. 🪚 Chantiers/Planning référent/Planning référent.md");
-    expect(shownPath("a/samm/b/samm/c.md", "samm")).toBe("c.md");
+    expect(shownPath(note, "mon-coffre")).toBe("1. 📂 Projets/Site web/Site web.md");
+    expect(shownPath("mon-coffre/Notes/a.md", "mon-coffre")).toBe("Notes/a.md");
+    expect(shownPath(note, parseQuery("path root 0. Travail/mon-coffre/").pathRoot)).toBe("1. 📂 Projets/Site web/Site web.md");
+    expect(shownPath("a/notes/b/notes/c.md", "notes")).toBe("c.md");
     expect(shownPath(note, null)).toBe(note);
   });
 
   it("keeps the vault path of a note out of the root, or only partly named", () => {
-    expect(shownPath("Perso/Courses.md", "samm-workspace")).toBe("Perso/Courses.md");
-    expect(shownPath("old-samm-workspace/a.md", "samm-workspace")).toBe("old-samm-workspace/a.md");
-    expect(shownPath("SAMM-workspace/a.md", "samm-workspace")).toBe("SAMM-workspace/a.md");
+    expect(shownPath("Perso/Courses.md", "mon-coffre")).toBe("Perso/Courses.md");
+    expect(shownPath("old-mon-coffre/a.md", "mon-coffre")).toBe("old-mon-coffre/a.md");
+    expect(shownPath("MON-COFFRE/a.md", "mon-coffre")).toBe("MON-COFFRE/a.md");
     expect(shownPath("Work/a.md", "clients/Work")).toBe("Work/a.md");
-    expect(shownPath("a/samm-workspace", "samm-workspace")).toBe("a/samm-workspace");
+    expect(shownPath("a/mon-coffre", "mon-coffre")).toBe("a/mon-coffre");
   });
 
   it("matches accents written in NFC or NFD alike", () => {
-    const nfd = "Clients/Référent/Été.md".normalize("NFD");
-    expect(shownPath(nfd, parseQuery("path root Clients/Référent".normalize("NFC")).pathRoot)).toBe("Été.md".normalize("NFD"));
-    expect(shownPath("Clients/Référent/Été.md".normalize("NFC"), parseQuery("path root Référent".normalize("NFD")).pathRoot)).toBe("Été.md");
+    const nfd = "Clients/Équipe/Été.md".normalize("NFD");
+    expect(shownPath(nfd, parseQuery("path root Clients/Équipe".normalize("NFC")).pathRoot)).toBe("Été.md".normalize("NFD"));
+    expect(shownPath("Clients/Équipe/Été.md".normalize("NFC"), parseQuery("path root Équipe".normalize("NFD")).pathRoot)).toBe("Été.md");
   });
 
   it("leaves the path filters on the path in the vault", () => {
-    const q = parseQuery("path root samm-workspace\npath includes samm-workspace/1.");
+    const q = parseQuery("path root mon-coffre\npath includes mon-coffre/1.");
     expect(inScope(q, note)).toBe(true);
     expect(inScope(q, "Perso/1. a.md")).toBe(false);
   });

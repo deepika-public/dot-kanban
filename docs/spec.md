@@ -72,7 +72,9 @@ plus précis au plus général :
 3. la propriété de même nom dans le frontmatter de la note.
 
 `owner` (abrégé `o`) désigne les personnes assignées : `owner: [Alice]` dans la note assigne
-par défaut toutes ses tâches. Les autres clés (`client`, `sprint`…) s'affichent, se filtrent et se groupent de
+par défaut toutes ses tâches. Sur la ligne, une mention `@Alice` (après une espace, hors
+valeur de champ) vaut `[owner:: Alice]` ; elle ne compte pas dans le texte de la tâche, et
+le tableau réécrit en mentions les personnes d'une ligne qui les mentionne. Les autres clés (`client`, `sprint`…) s'affichent, se filtrent et se groupent de
 la même façon, sans configuration.
 
 ### 3.3 Ordre
@@ -204,7 +206,8 @@ couleur en dur.
 
 ## 8. Transparence
 
-- **Résumé** sous la barre d'outils : « 42 tâches · Projets/ · owner: Alice · 3 écartées ».
+- **Résumé** dans la barre d'outils, à droite des puces : « 42 tâches · 3 écartées ». Les
+  filtres du bloc sont dans la légende (**?**), une ligne chacun.
 - **Écartées** : un clic liste les tâches lues mais non affichées et la raison (coche sans
   colonne ou inconnue, `limit`, recherche).
 - **État vide** : rappelle les filtres actifs plutôt qu'un tableau blanc.

@@ -25,7 +25,7 @@ const tasks = [
     ].join("\n"),
     { owner: "Alice", title: "Site web" },
   ),
-  ...tasksOf("Café.md", "- [ ] Beans [owner:: Clément]"),
+  ...tasksOf("Café.md", "- [ ] Beans [owner:: Zoé]"),
 ];
 const titles = (cards: { info: { description: string } }[]) => cards.map((c) => c.info.description);
 
@@ -58,10 +58,10 @@ describe("columns", () => {
 describe("toolbar", () => {
   it("filters by person and search, without case nor accents, the search reading the path too", () => {
     const q = parseQuery("");
-    expect(titles(layoutBoard(tasks, q, { ...none, person: "clement" }, today).columns[0].cards)).toEqual(["Beans"]);
+    expect(titles(layoutBoard(tasks, q, { ...none, person: "zoe" }, today).columns[0].cards)).toEqual(["Beans"]);
     expect(titles(layoutBoard(tasks, q, { ...none, search: "CAFE" }, today).columns[0].cards)).toEqual(["Beans"]);
     expect(layoutBoard(tasks, q, { ...none, search: "projects/site" }, today).shown).toBe(7);
-    expect(layoutBoard(tasks, q, none, today).people).toEqual(["Alice", "Bob", "Clément"]);
+    expect(layoutBoard(tasks, q, none, today).people).toEqual(["Alice", "Bob", "Zoé"]);
   });
 });
 
@@ -85,7 +85,7 @@ describe("path root", () => {
 describe("lanes", () => {
   it("groups by a field, a card under each of its values, no value last", () => {
     const board = layoutBoard(tasks, parseQuery("column [ ]\ncolumn [/]"), { ...none, groupBy: "owner" }, today);
-    expect(board.lanes!.map((l) => [l.label, l.count])).toEqual([["Alice", 4], ["Bob", 2], ["Clément", 1]]);
+    expect(board.lanes!.map((l) => [l.label, l.count])).toEqual([["Alice", 4], ["Bob", 2], ["Zoé", 1]]);
     expect(titles(board.lanes![1].cells[1])).toEqual(["Doing"]);
   });
 
@@ -108,6 +108,18 @@ describe("lanes", () => {
     expect(lanes("group by sprint | order reverse", "owner")).toEqual([null]);
     const byPriority = layoutBoard(tasks, parseQuery("column [ ]\ngroup by priority | order reverse"), { ...none, groupBy: "priority" }, today);
     expect(byPriority.lanes!.map((l) => l.value)).toEqual(["low", "none", "high"]);
+  });
+
+  it("draws the lanes order lists, and every priority, with show empty", () => {
+    const numbered = tasksOf("Sprints.md", ["- [ ] a [sprint:: 2]", "- [ ] b"].join("\n"));
+    const board = (block: string, groupBy = "sprint") => layoutBoard(numbered, parseQuery(`column [ ]\ncolumn [x]\n${block}`), { ...none, groupBy }, today);
+    const shown = board('group by sprint | order 1, "2", 3 | show empty');
+    expect(shown.lanes!.map((l) => [l.value, l.count])).toEqual([["1", 0], ["2", 1], ["3", 0], [null, 1]]);
+    expect(shown.lanes![0].cells).toEqual([[], []]);
+    expect(board("group by sprint | show empty | order 1").lanes!.map((l) => l.value)).toEqual(["1", "2", null]);
+    expect(board("group by sprint | order 1").lanes!.map((l) => l.value)).toEqual(["2", null]);
+    expect(board("group by sprint | order 1 | show empty", "owner").lanes!.map((l) => l.value)).toEqual([null]);
+    expect(board("group by priority | show empty", "priority").lanes!.map((l) => l.value)).toEqual(["highest", "high", "medium", "none", "low", "lowest"]);
   });
 
   it("writes the lane's value in place of the one the card left", () => {

@@ -281,14 +281,15 @@ export class TikBoard extends MarkdownRenderChild {
       add.createSpan({ text: t("add") });
       add.onclick = () => void this.addTask();
     }
-    bar.createDiv({ cls: "dot-kanban-spacer" });
+    // The count sits by the chips; the filters that make it are in the legend (?).
     const summary = bar.createDiv({ cls: "dot-kanban-summary" });
+    bar.createDiv({ cls: "dot-kanban-spacer" });
     const edit = bar.createEl("button", { cls: "dot-kanban-icon-button", attr: { "aria-label": t("editSource") } });
     setIcon(edit, "code-2");
     edit.onclick = () => void this.editSource();
     const legend = bar.createEl("button", { cls: "dot-kanban-icon-button", attr: { "aria-label": t("legend") } });
     setIcon(legend, "help-circle");
-    legend.onclick = () => new LegendModal(this.app, this.query.columns, this.query.columnsBy).open();
+    legend.onclick = () => new LegendModal(this.app, this.query.columns, this.query.columnsBy, this.query.filters.map((f) => f.text)).open();
 
     const topScroll = root.createDiv({ cls: "dot-kanban-scroll-top is-hidden", attr: { "aria-hidden": "true" } });
     topScroll.createDiv({ cls: "dot-kanban-scroll-top-width" });
@@ -434,8 +435,7 @@ export class TikBoard extends MarkdownRenderChild {
     const count = this.notesBoard
       ? model.shown === 1 ? t("note") : t("notes", { n: model.shown })
       : model.shown === 1 ? t("task") : t("tasks", { n: model.shown });
-    const parts = [count, ...this.query.filters.map((f) => f.text)];
-    shell.summary.createSpan({ text: parts.join(" · ") });
+    shell.summary.createSpan({ text: count });
     if (model.hidden.length) {
       shell.summary.appendText(" · ");
       const hidden = shell.summary.createEl("button", { cls: "dot-kanban-link", text: model.hidden.length === 1 ? t("hiddenOne") : t("hidden", { n: model.hidden.length }) });

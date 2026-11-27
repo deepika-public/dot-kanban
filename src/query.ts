@@ -68,6 +68,8 @@ export interface Query {
   groupBy: string | null;
   /** Order of the lanes, for the block's `group by` only. */
   groupOrder: GroupOrder;
+  /** `| show empty`: a lane for each value `order` lists (each priority), cards or not. */
+  groupEmpty: boolean;
   /** Card elements shown, §5 of the spec. */
   show: Set<string>;
   /**
@@ -109,7 +111,7 @@ const KEYWORDS = [
   "tags", "tag", "priority", "has", "no", "is", ...DATE_KINDS,
 ];
 
-/** Case- and accent-insensitive form: "Clément" and "CLEMENT" compare equal. */
+/** Case- and accent-insensitive form: "Zoé" and "ZOE" compare equal. */
 export function fold(text: string): string {
   return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
@@ -162,20 +164,34 @@ type Test = Filter["test"];
 type TextOp = "includes" | "does not include" | "is" | "is not";
 const TEXT_OP = /^(includes?|does not include|do not include|is not|is)\s+(.+)$/i;
 
+/** `"a OR b"` → `a OR b`: quotes around a value keep its spaces and its ` OR `. */
+export function unquote(text: string): string {
+  const t = text.trim();
+  return t.length >= 2 && t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t;
+}
+
+/**
+ * A value with wildcards as a test: `*` any characters but `/`, `**` any characters, `\*` a
+ * star. `whole`: the value entire (`is`), else a piece of it (`includes`). Null without wildcard.
+ */
+export function wildcard(wanted: string, whole: boolean): RegExp | null {
+  if (!/(^|[^\\])\*/.test(wanted)) return null;
+  const source = wanted
+    .split(/(\\\*|\*\*|\*)/)
+    .map((part) => (part === "**" ? ".*" : part === "*" ? "[^/]*" : (part === "\\*" ? "*" : part).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
+    .join("");
+  return new RegExp(whole ? `^${source}$` : source, "s");
+}
+
 function textMatch(op: string, wanted: string): (values: string[]) => boolean {
   const w = fold(wanted.trim());
   const normalized = op.toLowerCase().replace(/^include$/, "includes").replace("do not", "does not") as TextOp;
   const any = (values: string[], match: (v: string) => boolean) => values.some((v) => match(fold(v)));
-  switch (normalized) {
-    case "includes":
-      return (values) => any(values, (v) => v.includes(w));
-    case "does not include":
-      return (values) => !any(values, (v) => v.includes(w));
-    case "is":
-      return (values) => any(values, (v) => v === w);
-    default:
-      return (values) => !any(values, (v) => v === w);
-  }
+  const whole = normalized === "is" || normalized === "is not";
+  const pattern = wildcard(w, whole);
+  const literal = w.replaceAll("\\*", "*");
+  const matches = pattern ? (v: string) => pattern.test(v) : whole ? (v: string) => v === literal : (v: string) => v.includes(literal);
+  return normalized === "includes" || normalized === "is" ? (values) => any(values, matches) : (values) => !any(values, matches);
 }
 
 function textTest(op: string, wanted: string, values: (task: Task) => string[]): Test {
@@ -246,7 +262,8 @@ function singleFilter(text: string): Test {
     const near = nearKeyword(subject);
     fail(t("unknownInstruction", { text }) + (near ? `, ${t("didYouMean", { word: near })}` : ""));
   }
-  const [, verb, wanted] = op!;
+  const verb = op![1];
+  const wanted = unquote(op![2]);
   switch (subject) {
     case "path": return textTest(verb, wanted, (task) => [task.path]);
     case "filename": return textTest(verb, wanted, (task) => [fileName(task.path)]);
@@ -304,13 +321,31 @@ function pathPart(text: string): ((path: string) => boolean) | null {
   const m = text.match(/^(path|filename)\s+(.+)$/i);
   const op = m?.[2].match(TEXT_OP);
   if (!m || !op) return null;
-  const match = textMatch(op[1], op[2]);
+  const match = textMatch(op[1], unquote(op[2]));
   return m[1].toLowerCase() === "path" ? (path) => match([path]) : (path) => match([fileName(path)]);
+}
+
+/** `a OR "b OR c"` → `a`, `"b OR c"`: an ` OR ` between quotes is part of the value. */
+function splitOr(text: string): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '"') quoted = !quoted;
+    const or = !quoted && text.slice(i).match(/^\s+OR\s+/);
+    if (or) {
+      parts.push(text.slice(start, i));
+      i += or[0].length - 1;
+      start = i + 1;
+    }
+  }
+  parts.push(text.slice(start));
+  return parts.map((part) => part.trim());
 }
 
 /** A filter line: `a OR b`, each part optionally prefixed by `not`. */
 export function parseFilter(text: string): Filter {
-  const parts = text.split(/\s+OR\s+/).map((part) => part.trim());
+  const parts = splitOr(text);
   const tests = parts.map(singleFilter);
   const paths = parts.map(pathPart);
   const path = paths.every((p) => p !== null) ? (p: string) => paths.some((test) => test!(p)) : null;
@@ -338,12 +373,16 @@ function parseGroupOrder(text: string): GroupOrder {
   return { kind: "custom", values };
 }
 
-/** `group by x`, then options after `|`: `order …`. */
+/** `group by x`, then options after `|`: `order …`, `show empty`. */
 function parseGroup(rest: string, query: Query) {
   const [head, ...options] = rest.split("|").map((s) => s.trim());
   const m = head.match(/^by\s+([\w][\w-]*)$/i) ?? fail(t("badGroup", { text: head }));
   query.groupBy = isBuiltInGroup(m[1].toLowerCase()) ? m[1].toLowerCase() : fieldKey(m[1]);
   for (const option of options) {
+    if (/^show\s+empty$/i.test(option)) {
+      query.groupEmpty = true;
+      continue;
+    }
     const order = option.match(/^order(?:\s+(.*))?$/i);
     if (!order) fail(t("unknownInstruction", { text: option }));
     query.groupOrder = parseGroupOrder(order![1] ?? "");
@@ -399,6 +438,7 @@ export function parseQuery(source: string): Query {
     sort: DEFAULT_SORT,
     groupBy: null,
     groupOrder: { kind: "natural", values: [] },
+    groupEmpty: false,
     show: new Set(DEFAULT_SHOW),
     asked: new Set(),
     width: null,

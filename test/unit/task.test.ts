@@ -76,6 +76,20 @@ describe("reading a task line", () => {
     expect(info.dataview).toBe(true);
   });
 
+  it("reads `@` mentions as owners, next to the `owner` field", () => {
+    const info = parseLine("- [ ] Call the bank @Zoé @Jean-Pierre, then @Alice. [owner:: Bob] 📅 2026-10-12")!;
+    expect(info.fields.owner).toEqual(["Bob", "Zoé", "Jean-Pierre", "Alice"]);
+    expect(info.description).toBe("Call the bank, then.");
+    expect(info.title).toBe("Call the bank @Zoé @Jean-Pierre, then @Alice. [owner:: Bob]");
+    expect(parseLine("- [ ] Ask @Bob [owner:: Bob]")!.fields.owner).toEqual(["Bob"]);
+  });
+
+  it("does not read an `@` inside a word, a path or a field as a mention", () => {
+    const info = parseLine("- [ ] Mail a@b.fr about @types/node [note:: ask @Carol]")!;
+    expect(info.fields.owner).toBeUndefined();
+    expect(info.description).toBe("Mail a@b.fr about @types/node");
+  });
+
   it("splits values without breaking links, and reads links as their text", () => {
     expect(splitValues("Alice, [[Bob, the builder]] ,")).toEqual(["Alice", "[[Bob, the builder]]"]);
     expect(valueText("[[People/Alice]]")).toBe("Alice");
@@ -110,6 +124,19 @@ describe("writing a task line", () => {
     expect(setDate("- [ ] a 📅 2026-10-12", "due", null)).toBe("- [ ] a");
     expect(setField("- [ ] a [owner:: Alice] 🔼", "owner", ["Bob", "[[Carol]]"])).toBe("- [ ] a 🔼 [owner:: Bob, [[Carol]]]");
     expect(setField("- [ ] a [o:: [[Alice]]] b", "owner", [])).toBe("- [ ] a b");
+  });
+
+  it("writes owners as mentions on a line that mentions them", () => {
+    expect(setField("    - [ ] a @Alice b 📅 2026-10-12", "owner", ["Bob", "Zoé"])).toBe("    - [ ] a b 📅 2026-10-12 @Bob @Zoé");
+    expect(setField("- [ ] a @Alice [owner:: Carol] ^id", "owner", ["Bob"])).toBe("- [ ] a @Bob ^id");
+    expect(setField("- [ ] a @Alice", "owner", ["[[Bob]]"])).toBe("- [ ] a [owner:: [[Bob]]]");
+    expect(setField("- [ ] a @Alice", "owner", ["Bob Martin"])).toBe("- [ ] a [owner:: Bob Martin]");
+    expect(setField("- [ ] a @Alice b", "owner", [])).toBe("- [ ] a b");
+    expect(setField("- [ ] a [note:: ask @Carol]", "owner", ["Bob"])).toBe("- [ ] a [note:: ask @Carol] [owner:: Bob]");
+  });
+
+  it("finds a task again after its owner mentions change", () => {
+    expect(normalizeTaskText("- [ ] Call @Alice the bank")).toBe(normalizeTaskText("- [ ] Call the bank @Bob"));
   });
 });
 
