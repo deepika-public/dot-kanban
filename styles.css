@@ -750,7 +750,9 @@ body.dot-kanban-checkboxes input.task-list-item-checkbox[data-task="/"]:checked:
     box-shadow: none !important;
 }
 
-.markdown-source-view.mod-cm6 .cm-embed-block.dot-kanban-embed > .edit-block-button {
+/* The button sits in the block until Obsidian 1.14, in its `.embed-actions` from 1.15. */
+.markdown-source-view.mod-cm6 .cm-embed-block.dot-kanban-embed > .edit-block-button,
+.markdown-source-view.mod-cm6 .cm-embed-block.dot-kanban-embed > .embed-actions > .edit-block-button {
     display: none !important;
 }
 
