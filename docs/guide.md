@@ -27,7 +27,7 @@ owner: Alice
 | **Priorité** | 🔺 highest, ⏫ high, 🔼 medium, 🔽 low, ⏬ lowest | rien = none |
 | **Dates** | 📅 échéance, ⏳ planifiée, 🛫 début, ➕ création, ✅ faite, ❌ annulée, suivies de `AAAA-MM-JJ` | ou en champs Dataview `[due:: …]` |
 | **Récurrence** | 🔁 every week… | terminée depuis le tableau seulement avec Tasks |
-| **Personnes** | `[owner:: Alice, Bob]`, abrégé `[o:: Alice]` ; `[[Alice]]` accepté | |
+| **Personnes** | `[owner:: Alice, Bob]`, abrégé `[o:: Alice]`, ou mentions `@Alice @Bob` ; `[[Alice]]` accepté | |
 | **Autres champs** | `[clé:: valeur]`, autant qu'on veut | |
 | **Sous-tâches** | tâches indentées sous une tâche | ne sont pas des cartes : elles font la progression `1/2` de leur parente |
 
@@ -121,10 +121,11 @@ suggestion (« vouliez-vous dire `column` ? ») ; le reste s'applique.
   ses propriétés en champs et la progression de ses tâches.
 - **Groupes** (`group by`) : les colonnes restent en haut ; une rangée repliable par valeur ;
   dans un groupe `owner`, la personne du groupe n'est pas répétée sur ses cartes.
-- **Le résumé** : nombre de cartes, filtres du bloc, et **écartées** : les tâches lues mais
+- **Le résumé**, à droite des puces : nombre de cartes et **écartées** : les tâches lues mais
   non montrées, avec leur raison (coche sans colonne, coche inconnue, au-delà de `limit`,
   recherche ou puce).
-- **?** : la légende des colonnes (coche, statut, ce qui est écrit en y entrant).
+- **?** : la légende des colonnes (coche, statut, ce qui est écrit en y entrant) et les
+  filtres du bloc.
 
 ## 4. Ce qu'on peut faire
 

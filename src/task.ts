@@ -87,6 +87,36 @@ export function fieldKey(key: string): string {
 /** The spellings of a field in a line: `owner` and `o`. */
 export const fieldSpellings = (key: string) => [key, ...Object.keys(FIELD_ALIASES).filter((a) => FIELD_ALIASES[a] === key)];
 
+// `@Alice` on a task line is another spelling of `[owner:: Alice]`: after a space, not
+// inside a word (`a@b.fr`), a path (`@types/node`) nor a field's value.
+const NAME = "[\\p{L}\\p{N}](?:[\\p{L}\\p{N}_'’-]*[\\p{L}\\p{N}])?";
+const MENTION = new RegExp(`(^|\\s)@(${NAME})(?=$|[\\s,.;:!?)\\]])`, "gu");
+const MENTION_NAME = new RegExp(`^${NAME}$`, "u");
+
+/** Runs `edit` on the parts of a line outside its fields, which stay as they are. */
+function outsideFields(line: string, edit: (text: string) => string): string {
+  let out = "";
+  let last = 0;
+  for (const m of line.matchAll(FIELD)) {
+    out += edit(line.slice(last, m.index)) + m[0];
+    last = m.index! + m[0].length;
+  }
+  return out + edit(line.slice(last));
+}
+
+/** The names of a line's `@` mentions, in order. */
+function mentionsOf(text: string): string[] {
+  const names: string[] = [];
+  outsideFields(text, (part) => {
+    for (const m of part.matchAll(MENTION)) names.push(m[2]);
+    return part;
+  });
+  return names;
+}
+
+/** The line without its `@` mentions, each with the space before it. */
+const removeMentions = (line: string) => outsideFields(line, (part) => part.replace(MENTION, ""));
+
 /** `Alice, [[Bob, the builder]]` → two values; commas inside a link do not split. */
 export function splitValues(raw: string): string[] {
   const out: string[] = [];
@@ -142,6 +172,8 @@ export function parseLine(line: string): LineInfo | null {
     if (TASKS_FIELDS.has(key)) tasksFields[key] ??= raw;
     else fields[key] = [...(fields[key] ?? []), ...splitValues(raw)];
   }
+  const mentions = mentionsOf(body);
+  if (mentions.length) fields[OWNER] = [...new Set([...(fields[OWNER] ?? []), ...mentions])];
 
   const dates: Partial<Record<DateKind, Day>> = {};
   for (const kind of DATE_KINDS) {
@@ -160,7 +192,7 @@ export function parseLine(line: string): LineInfo | null {
   let title = body;
   for (const kind of DATE_KINDS) title = title.replace(emojiDate(kind), " ");
   title = title.replace(RECURRENCE_RULE, " ").replace(PRIORITY_EMOJI, " ").replace(OTHER_SIGNIFIERS, " ").replace(/\s+/g, " ").trim();
-  const description = title.replace(FIELD, " ").replace(BLOCK_ID, "").replace(/\s+/g, " ").trim();
+  const description = removeMentions(title).replace(FIELD, " ").replace(BLOCK_ID, "").replace(/\s+/g, " ").trim();
 
   return {
     symbol: canonicalSymbol(box),
@@ -224,12 +256,21 @@ export function setPriority(line: string, level: number): string {
   return append(out, dataview ? `[priority:: ${p.name}]` : p.emoji);
 }
 
-/** Writes `[key:: a, b]` in place of any field of that key (or its aliases); no values removes it. */
+/**
+ * Writes `[key:: a, b]` in place of any field of that key (or its aliases); no values removes it.
+ * For `owner`, `@` mentions are replaced too, and a line that wrote its owners as mentions
+ * gets mentions again (`@Alice @Bob`), unless a value cannot be one (`[[Bob]]`, `Bob Martin`).
+ */
 export function setField(line: string, key: string, values: readonly string[]): string {
   let out = line;
   for (const spelling of fieldSpellings(key)) out = removeField(out, spelling);
+  const owner = key === OWNER;
+  const mentioned = owner && mentionsOf(taskBody(out)).length > 0;
+  if (owner) out = removeMentions(out);
   out = out.trimEnd();
-  return values.length ? append(out, `[${key}:: ${values.join(", ")}]`) : out;
+  if (!values.length) return out;
+  if (mentioned && values.every((v) => MENTION_NAME.test(v))) return append(out, values.map((v) => `@${v}`).join(" "));
+  return append(out, `[${key}:: ${values.join(", ")}]`);
 }
 
 /**

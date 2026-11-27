@@ -45,6 +45,7 @@ width 240px
 | `sort by a, b reverse` | Ordre des cartes : `priority` (la plus haute d'abord), `due`, `scheduled`, `start`, `created`, `done`, `cancelled` (la plus proche d'abord), `path`, `file order`, ou un champ (`client`). Sans valeur, en dernier | `priority, due, file order` |
 | `group by x` | Une rangée par valeur de `x` : un champ (`owner`, `client`…), `priority`, `note` ou `heading`. Changeable dans la barre d'outils | aucun groupe |
 | `group by x \| order …` | Ordre des rangées : `alphanumeric`, `reverse`, ou une liste de valeurs, voir [ordre des rangées](#ordre-des-rangées) | `alphanumeric` |
+| `group by x \| show empty` | Aussi les rangées sans carte : celles que `order` nomme, chaque priorité, voir [ordre des rangées](#ordre-des-rangées) | seulement les rangées qui ont des cartes |
 | `show a, b` · `hide a, b` | Éléments des cartes, voir [ce qu'affiche une carte](#ce-quaffiche-une-carte) | `priority, due, subtasks, owner, path` |
 | `add to Dossier/Note.md` | Note à la fin de laquelle le bouton **Ajouter** écrit les nouvelles tâches, voir [la barre d'outils](#la-barre-doutils) : chemin dans le vault, `.md` facultatif, `/` au début indifférent. Sans note : erreur. Si plusieurs lignes, la dernière l'emporte. Sans effet sur un [tableau de notes](#tableau-de-notes) | pas de bouton **Ajouter** |
 | `width 200px` | Largeur minimale d'une colonne ; largeur exacte d'une colonne seule, qui ne s'étire pas | `240px` |
@@ -68,8 +69,15 @@ accents ; `includes` cherche un morceau, `is` la valeur entière.
 | `priority is`, `is not`, `above`, `below` + `highest`, `high`, `medium`, `none`, `low`, `lowest` | `priority above medium` |
 | `is recurring`, `is not recurring` | |
 | `not <filtre>` ; `<filtre> OR <filtre>` | `path includes Pro/ OR path includes Perso/` |
+| Valeur entre guillemets : ses espaces et ses ` OR ` en font partie | `path includes "A OR B/"` |
+| Jokers : `*` (tout sauf `/`), `**` (tout, `/` compris), `\*` (une étoile) | `path includes "Projets/*/Notes/"` |
 
 Dates : `today`, `tomorrow`, `yesterday`, `in 3 days`, `2 weeks ago`, `AAAA-MM-JJ`.
+
+Avec un joker, `includes` cherche le motif dans la valeur et `is` la valeur entière :
+`filename is "Projet*"` garde les notes dont le nom commence par « Projet », `path includes "Clients/*/Suivi"`
+les notes d'un dossier `Suivi` rangé un niveau sous `Clients/`, `path includes "Clients/**/Suivi"`
+à n'importe quelle profondeur.
 
 Les filtres du bloc définissent le périmètre du tableau ; les tâches qu'ils écartent ne sont
 pas comptées comme « écartées ».
@@ -92,6 +100,11 @@ ordre :
 | `\| order reverse` | l'inverse : `10`, `2`, `1` ; pour `priority`, de la plus basse à la plus haute |
 | `\| order a, b, c` | les valeurs nommées d'abord, dans l'ordre écrit, puis les autres dans l'ordre alphanumérique. Valeur comparée sans casse ni accents ; entre guillemets si elle contient une virgule (`"a, b"`) |
 
+`| show empty`, avant ou après `| order`, dessine aussi les rangées sans carte : une par
+valeur que `order` nomme, et pour `group by priority` une par priorité. Une carte déposée
+dans une case vide prend la valeur de sa rangée et de sa colonne. Les colonnes, elles,
+s'affichent toujours, vides ou non.
+
 La rangée sans valeur (« Sans `x` ») reste toujours la dernière. L'ordre vaut pour le
 `group by` du bloc ; un autre groupement choisi dans la barre d'outils est en ordre
 alphanumérique.
@@ -101,7 +114,7 @@ alphanumérique.
 cards notes
 columns by statut
 column "2 · ▶️ À faire" À faire
-group by priorite | order "1 · 🔥 Haute", "2 · Moyenne", "3 · Basse"
+group by priorite | order "1 · 🔥 Haute", "2 · Moyenne", "3 · Basse" | show empty
 ```
 ````
 
@@ -157,15 +170,15 @@ attendues » ou « Points d'attention ».
 ### Le chemin affiché
 
 Sans `path root`, une carte affiche le chemin de sa note dans le vault. Avec
-`path root samm-workspace`, si ce chemin contient le dossier `samm-workspace`, au début ou au
+`path root mon-coffre`, si ce chemin contient le dossier `mon-coffre`, au début ou au
 milieu, la carte n'affiche que ce qui le suit :
 
 | Chemin dans le vault | Affiché |
 | --- | --- |
-| `Deepika/Work/samm-workspace/1. Chantiers/Planning/Planning.md` | `1. Chantiers/Planning/Planning.md` |
-| `samm-workspace/Notes.md` | `Notes.md` |
+| `Perso/Travail/mon-coffre/1. Projets/Site/Site.md` | `1. Projets/Site/Site.md` |
+| `mon-coffre/Notes.md` | `Notes.md` |
 | `Perso/Courses.md` (hors du dossier) | `Perso/Courses.md` |
-| `old-samm-workspace/a.md` (pas le même dossier) | `old-samm-workspace/a.md` |
+| `old-mon-coffre/a.md` (pas le même dossier) | `old-mon-coffre/a.md` |
 
 - Le dossier est comparé segment entier par segment entier, **casse comprise**, comme les
   chemins d'Obsidian ; un accent écrit en forme composée ou décomposée (NFC, NFD) compte
@@ -193,7 +206,7 @@ columns by statut
 column "en cours" Maintenant | color blue
 column "à faire" Ensuite
 column livré Livré | color green | size small
-path includes Chantiers/
+path includes Projets/
 show theme, cible
 ```
 ````
@@ -219,10 +232,10 @@ signale l'erreur.
 
 Recherche (titre et chemin affiché, sans casse ni accents), puce **owner** (une personne), puce
 **Group by** (aucun, `owner`, `priority`, `note`, `heading`), bouton **Ajouter** si le bloc a une ligne `add to`, puis le **résumé** :
-nombre de cartes, filtres du bloc, et **écartées**, qui liste les tâches lues mais non
+nombre de cartes et **écartées**, qui liste les tâches lues mais non
 montrées avec leur raison (coche sans colonne, coche inconnue, au-delà de `limit`, barre
-d'outils). **?** ouvre la légende des colonnes : coche, statut, ce qui est écrit en y
-entrant. **`</>`** passe la note en édition, curseur dans le bloc, pour le modifier. Les choix de la barre ne sont pas enregistrés dans la note ; ils restent tant que
+d'outils). **?** ouvre la légende : les colonnes (coche, statut, ce qui est écrit en y
+entrant) et les filtres du bloc, une ligne chacun. **`</>`** passe la note en édition, curseur dans le bloc, pour le modifier. Les choix de la barre ne sont pas enregistrés dans la note ; ils restent tant que
 la note est ouverte.
 
 **Ajouter** crée une tâche et l'écrit **à la fin de la note que le bloc nomme**
@@ -243,7 +256,7 @@ déborde.
 | Geste | Effet dans la note |
 | --- | --- |
 | Glisser vers une autre colonne | Coche de la colonne, avec dates ✅ / ❌, voir [statuts](task-format.md#statuts) |
-| Glisser vers un autre groupe | Valeur du groupe écrite sur la ligne (`[owner:: Bob]`, emoji de priorité), à la place de celle quittée. Pas pour les groupes `note` et `heading` |
+| Glisser vers un autre groupe | Valeur du groupe écrite sur la ligne (`[owner:: Bob]`, ou `@Bob` sur une ligne qui mentionne ses personnes, emoji de priorité), à la place de celle quittée. Pas pour les groupes `note` et `heading` |
 | Glisser une carte de note | La propriété `columns by` (ou celle du groupe) écrite dans les propriétés de la note, voir [tableau de notes](#tableau-de-notes) |
 | Glisser vers le haut ou le bas | Dans une colonne triée d'abord par `priority` (le défaut), une bande par priorité apparaît pendant le glisser : 🔺 la plus haute … aucune … ⏬ la plus basse. Déposer dans une bande écrit sa priorité ; l'emplacement l'annonce quand elle change. Se combine avec un changement de colonne ou de groupe. Ailleurs, et dans sa propre bande, rien : l'ordre est calculé |
 | Clic sur la coche | `[x]` et ✅, ou `[ ]` depuis `[x]` |

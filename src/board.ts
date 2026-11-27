@@ -120,8 +120,16 @@ function compareLanes(order: GroupOrder): (a: LaneKey, b: LaneKey) => number {
   };
 }
 
-function layoutLanes(columns: BoardModel["columns"], groupBy: string, root: string | null, order: GroupOrder): Lane[] {
+/** The lanes `| show empty` draws without cards: each priority, or each value `order` lists. */
+function emptyKeys(groupBy: string, order: GroupOrder): LaneKey[] {
+  if (groupBy === "priority") return PRIORITIES.map((p) => ({ id: p.name, value: p.name, label: p.name, rank: -p.level }));
+  if (order.kind !== "custom") return [];
+  return order.values.map((v) => ({ id: groupBy === "note" ? v : fold(valueText(v)), value: v, label: valueText(v), rank: 0 }));
+}
+
+function layoutLanes(columns: BoardModel["columns"], groupBy: string, root: string | null, order: GroupOrder, empty: boolean): Lane[] {
   const lanes = new Map<string, LaneKey & { cells: Task[][]; tasks: Set<string> }>();
+  if (empty) for (const key of emptyKeys(groupBy, order)) lanes.set(key.id, { ...key, cells: columns.map(() => []), tasks: new Set() });
   const none: LaneKey = { id: "\u0000none", value: null, label: "", rank: Number.MAX_SAFE_INTEGER };
   columns.forEach((column, c) => {
     for (const task of column.cards) {
@@ -195,7 +203,9 @@ export function layoutBoard(tasks: readonly Task[], query: Query, toolbar: Toolb
     columns,
     // The block's order is for its own `group by`; another chosen in the toolbar is in natural order.
     lanes: toolbar.groupBy
-      ? layoutLanes(columns, toolbar.groupBy, query.pathRoot, toolbar.groupBy === query.groupBy ? query.groupOrder : NATURAL)
+      ? toolbar.groupBy === query.groupBy
+        ? layoutLanes(columns, toolbar.groupBy, query.pathRoot, query.groupOrder, query.groupEmpty)
+        : layoutLanes(columns, toolbar.groupBy, query.pathRoot, NATURAL, false)
       : null,
     lanesEditable: toolbar.groupBy !== "note" && toolbar.groupBy !== "heading" && !(by && toolbar.groupBy === "priority"),
     shown: columns.reduce((n, c) => n + c.cards.length, 0),

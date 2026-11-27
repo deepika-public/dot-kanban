@@ -62,7 +62,7 @@ Une colonne se teinte (`column [/] En cours | color blue`), les cartes changent 
 (`size small`, `size large` avec les sous-tâches), et `cards notes` fait une carte par note,
 rangée selon une propriété (`columns by statut`) que le glisser réécrit.
 
-`[owner:: Alice]` (ou `[o:: Alice]`) assigne une tâche ; `owner: Alice` dans les propriétés
+`[owner:: Alice]` (ou `[o:: Alice]`, ou `@Alice`) assigne une tâche ; `owner: Alice` dans les propriétés
 d'une note assigne toutes ses tâches. `group by owner` range les cartes par personne ; d'un
 groupe à l'autre, une carte se glisse aussi. L'ordre des rangées s'impose
 (`group by owner | order reverse`, `| order Bob, Alice`).

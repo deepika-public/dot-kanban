@@ -859,3 +859,7 @@ body.dot-kanban-checkboxes input.task-list-item-checkbox[data-task="/"]:checked:
     width: 16px;
     height: 16px;
 }
+
+.dot-kanban-legend-filters li {
+    overflow-wrap: anywhere;
+}

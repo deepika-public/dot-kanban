@@ -8,7 +8,12 @@ import type { ColumnDef } from "./query";
 
 /** Which checkbox each column writes, and what else. */
 export class LegendModal extends Modal {
-  constructor(app: App, private readonly columns: readonly ColumnDef[], private readonly columnsBy: string | null = null) {
+  constructor(
+    app: App,
+    private readonly columns: readonly ColumnDef[],
+    private readonly columnsBy: string | null = null,
+    private readonly filters: readonly string[] = [],
+  ) {
     super(app);
   }
 
@@ -31,6 +36,11 @@ export class LegendModal extends Modal {
         column.status.type === "DONE" ? t("legendDone") : column.status.type === "CANCELLED" ? t("legendCancelled") : t("legendNothing");
       row.createEl("td", { cls: "dot-kanban-muted", text: `${column.status.name} · ${t("legendWrites", { what: writes })}` });
     }
+    if (!this.filters.length) return;
+    this.contentEl.createEl("h3", { text: t("legendFilters") });
+    this.contentEl.createDiv({ cls: "dot-kanban-muted", text: t("legendFiltersHint") });
+    const list = this.contentEl.createEl("ul", { cls: "dot-kanban-legend-filters" });
+    for (const filter of this.filters) list.createEl("li", { cls: "dot-kanban-mono", text: filter });
   }
 
   onClose() {
